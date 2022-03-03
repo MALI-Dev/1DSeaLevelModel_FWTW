@@ -5,28 +5,27 @@
 
 /
 &io_directory
-    inputfolder_ice = 'INPUT_FILES/icemodel/'
-    inputfolder = 'INPUT_FILES/others/'
-    planetfolder = 'INPUT_FILES/earthmodel/'
-    gridfolder = 'INPUT_FILES/others/'
-    outputfolder = 'OUTPUT_SLM/'
-    outputfolder_ice = 'ICELOAD_SLM/'
+    inputfolder_ice = '../reformatted/'
+    inputfolder = '/lustre/scratch4/turquoise/yaris/ISMIP6_processing/SLM_input_files/'
+    planetfolder = '/lustre/scratch4/turquoise/yaris/ISMIP6_processing/SLM_input_files/earthmodel/'
+    gridfolder = '/lustre/scratch4/turquoise/yaris/ISMIP6_processing/SLM_input_files/Gridfiles/'
+    outputfolder = ''
+    outputfolder_ice = ''
     folder_coupled = ''
 
 /
 &file_format
     ext =''
-     fType_in = 'text'
-     fType_out = 'both'
+    fType_in = 'text'
+    fType_out = 'both'
 
 /
 &file_name
     planetmodel   = 'prem_512.l60K2C.sum18p6.dum19p2.tz19p4.lm22'
-    icemodel      = 'iceload5g'
-    icemodel_out  = 'iceload_out_'
+    icemodel      = 'lithk_AIS_DOE_MALI_exp05_GaussianGrid_'
+    icemodel_out  = ''
     timearray     = 'times'
-    topomodel     = 'etopo2_512_AISbedmap2'
-    topo_initial  = 'etopo2_512_AISbedmap2'
+    topo_initial  = 'topg_init_AIS_DOE_MALI_exp05_GaussianGrid'
     grid_lat      = 'GLlat_512.txt'
     grid_lon      = 'GLlon_512.txt'
 
@@ -38,17 +37,17 @@
     input_times = .false.
     initial_topo = .true.
     iceVolume = .true.
-    coupling = .true.
+    coupling = .false.
     patch_ice = .false.
 
 /
 &timewindow_config
-    L_sim = 20
+    L_sim = 85
     dt1 = 5
     dt2 = 10
     dt3 = 10
     dt4 = 10
-    Ldt1 = 20
+    Ldt1 = 85
     Ldt2 = 0
     Ldt3 = 0
     Ldt4 = 0
