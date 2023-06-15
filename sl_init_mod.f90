@@ -325,7 +325,7 @@ module sl_io_mod
                         planetmodel, icemodel, icemodel_out, &
                         timearray, topomodel, topo_initial, &
                         grid_lat, grid_lon, checkmarine, &
-                        tpw, calcRG, input_times, &
+                        tpw, elastic_only, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, &
                         patch_ice, L_sim, dt1, dt2, &
                         dt3, dt4, Ldt1, Ldt2, &
@@ -354,6 +354,7 @@ module sl_io_mod
 
       logical, intent(out)  :: checkmarine
       logical, intent(out)  :: tpw
+      logical, intent(out)  :: elastic_only
       logical, intent(out)  :: calcRG
       logical, intent(out)  :: input_times
       logical, intent(out)  :: initial_topo
@@ -384,7 +385,7 @@ module sl_io_mod
                            timearray, topomodel, topo_initial, &
                            grid_lat,grid_lon
 
-      namelist /model_config/ checkmarine, tpw, calcRG, &
+      namelist /model_config/ checkmarine, tpw, elastic_only, calcRG, &
                               input_times, initial_topo, iceVolume, &
                               coupling, patch_ice
 

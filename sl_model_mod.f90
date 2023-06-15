@@ -169,7 +169,7 @@ module sl_model_mod
                         outputfolder, outputfolder_ice, folder_coupled, ext, fType_in, fType_out, &
                         planetmodel, icemodel, icemodel_out, timearray, &
                         topomodel, topo_initial, grid_lat, grid_lon, &
-                        checkmarine, tpw, calcRG, input_times, &
+                        checkmarine, tpw, elastic_only, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, patch_ice, &
                         L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet)
 
@@ -1008,6 +1008,21 @@ module sl_model_mod
       r(:,:) = resh(:,:)
       rprimeT(:,:) = tresk(:,:)
       rT(:,:) = tresh(:,:)
+
+      !======================ELASTIC CHECK=======================
+      ! Zero out viscous love numbers if elastic_only is set to true
+      
+      if (elastic_only) then
+      rprime(:,:) = (0.0,0.0)
+      r(:,:) = (0.0,0.0)
+      rprimeT(:,:) = (0.0,0.0)
+      rT(:,:) = (0.0,0.0)
+
+      !L (horizontal) Love numbers are never actually used, but just in case
+      resl(:,:) = (0.0,0.0)
+      tresl(:,:) = (0.0,0.0)
+
+      endif
 
       !===========================================================
       !                       CALCULATIONS
