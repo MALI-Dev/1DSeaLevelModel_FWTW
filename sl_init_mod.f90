@@ -26,9 +26,9 @@ module planets_mod
    ! -------------------------------------------------------------------------
    subroutine earth_init
 
-      radius = 6.371E6              ! Radius of the Earth (m)
+      radius = 6.371229E6           ! Radius of the Earth (m)
       mass = 5.976E24               ! Mass of the Earth (kg)
-      rhoi = 920.0                  ! Density of ice (kg/m^3)
+      rhoi = 910.0                  ! Density of ice (kg/m^3)
       rhow = 1000.0                 ! Density of fresh water (kg/m^3)
       gacc = 9.80665                ! Acceleration due to gravity at the Earth's surface (m/s^2)
       omega = 7.292e-5              ! Rotation rate of the Earth (rad/s)
@@ -190,7 +190,7 @@ module sl_io_mod
 
       call check( nf90_put_var(ncid, varid, reshape(data_slm,[2*nglv,nglv]))) !write data
       call check( nf90_put_var(ncid, lon_varid, longrid))
-      call check( nf90_put_var(ncid, lat_varid, latgrid))
+      call check( nf90_put_var(ncid, lat_varid, latgrid(nglv:1:-1)))
       call check( nf90_close(ncid))
 
    end subroutine write_nf90
@@ -205,23 +205,25 @@ module sl_io_mod
       character (len = *), optional ::  suffix
       character (len = *), optional :: fext
       integer :: ncid, varid
+      character(str_len) :: fullfilename
 
       !open the file
       if (present (suffix)) then
           if (present (fext)) then
-             call check( nf90_open(trim(filepath)//trim(filename)//trim(suffix)//trim(fext), &
-            & nf90_nowrite, ncid) )
+             fullfilename = trim(filepath)//trim(filename)//trim(suffix)//trim(fext)
           else
-             call check( nf90_open(trim(filepath)//trim(filename)//trim(suffix)//trim(ext), &
-            & nf90_nowrite, ncid) )
+             fullfilename = trim(filepath)//trim(filename)//trim(suffix)//trim(ext)
           endif
       else
          if (present (fext)) then
-            call check( nf90_open(trim(filepath)//trim(filename)//trim(fext), nf90_nowrite, ncid) )
+            fullfilename = trim(filepath)//trim(filename)//trim(fext)
          else
-            call check( nf90_open(trim(filepath)//trim(filename)//trim(ext), nf90_nowrite, ncid) )
+            fullfilename = trim(filepath)//trim(filename)//trim(ext)
          endif
       endif
+
+      write(unit_num,*) 'Reading variable ', trim(filename), ' from netcdf file ', trim(fullfilename)
+      call check( nf90_open(trim(fullfilename), nf90_nowrite, ncid) )
 
       call check( nf90_inq_varid(ncid, trim(filename), varid) ) !get varid of the data variable
       call check( nf90_get_var(ncid, varid, data_temp) ) ! read the data
@@ -323,7 +325,7 @@ module sl_io_mod
                         planetmodel, icemodel, icemodel_out, &
                         timearray, topomodel, topo_initial, &
                         grid_lat, grid_lon, checkmarine, &
-                        tpw, calcRG, input_times, &
+                        tpw, elastic_only, sl_sphharm, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, &
                         patch_ice, L_sim, dt1, dt2, &
                         dt3, dt4, Ldt1, Ldt2, &
@@ -352,6 +354,8 @@ module sl_io_mod
 
       logical, intent(out)  :: checkmarine
       logical, intent(out)  :: tpw
+      logical, intent(out)  :: elastic_only
+      logical, intent(out)  :: sl_sphharm
       logical, intent(out)  :: calcRG
       logical, intent(out)  :: input_times
       logical, intent(out)  :: initial_topo
@@ -382,7 +386,7 @@ module sl_io_mod
                            timearray, topomodel, topo_initial, &
                            grid_lat,grid_lon
 
-      namelist /model_config/ checkmarine, tpw, calcRG, &
+      namelist /model_config/ checkmarine, tpw, elastic_only, sl_sphharm, calcRG, &
                               input_times, initial_topo, iceVolume, &
                               coupling, patch_ice
 

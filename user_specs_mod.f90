@@ -1,4 +1,3 @@
-
 ! For all variables except SL, the prefix d- is equivalent to δ- in Kendall, i.e. incremental change over one timestep.
 ! The prefix delta- is equivalent to Δ, i.e. total change since first timestep.
 ! SL is different - dSL refers to spatially heterogeneous change only (the script SL in Kendall), and deltaSL is the 
@@ -108,6 +107,8 @@ module user_specs_mod
    logical :: checkmarine = .false.  ! .true. to check for floating marine-based ice
                                                 ! .false. to assume all ice is grounded
    logical :: tpw = .true.           ! .true. to incorporate rotational feedback								                                                                                   ! .false. for non-rotating planet
+   logical :: elastic_only = .false.           ! .true. to perform elastic only calculation                                                                                                       ! .false. for full viscoelastic calculation
+   logical :: sl_sphharm = .false.           ! .true. to save change in sea level spherical harmonics - dsl_sphharm file                                                                       ! .false. to not save spherical harmonics 
    logical :: calcRG = .true.       ! .true. to calculate the radial and geoid displacements; note that  
                                                 !    the "true" option only works for a fixed number of outer loops
                                                 !    (i.e., no convergence checks!).

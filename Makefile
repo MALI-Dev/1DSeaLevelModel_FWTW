@@ -23,6 +23,10 @@ FC = gfortran
 FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian -ffpe-summary=none -g
 LDFLAGS = -O3 -m64
 
+# Other build options
+BLDOPTIONS = 
+# needed for Mac:
+BLDOPTIONS = -Wl,-rpath,$(NETCDF)/lib
 
 CPP = cpp -P -traditional
 CPPFLAGS = 
@@ -54,7 +58,7 @@ OBJS = sl_model_driver.o \
 all: slmodel.exe
 
 slmodel.exe: $(OBJS)
-	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS) $(BLDOPTIONS)
 
 sl_model_driver.o: sl_model_mod.o
 sl_model_mod.o: spharmt.o user_specs_mod.o sl_init_mod.o

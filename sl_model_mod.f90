@@ -90,7 +90,7 @@ module sl_model_mod
    real :: ttl, ekhl                                        ! Used in Love number calculations
    complex, dimension(0:norder,0:norder) :: viscous         ! Used in Love number calculations
    real :: xi, zeta                                         ! Convergence checks
-   real :: ice_volume                                       ! ice volume
+   real :: ice_volume, mean_slc                             ! ice volume and mean sea level change
    ! For calculating R and G separately
    real, dimension(nglv,2*nglv) :: rrxy, drrxy_computed
    complex, dimension(0:norder,0:norder) :: rrlm, dgglm, drrlm_computed
@@ -136,7 +136,12 @@ module sl_model_mod
    character(16) :: carg(20)                               ! Arguments from a bash script
    character(3) :: skip                                    ! variable used to skip lines in reading TPW file
 
-
+   !HH variables for debugging
+   real, dimension(nglv,2*nglv) :: deltaslxy_outside_maliMesh, deltaslxy_inside_maliMesh
+   complex, dimension(0:norder,0:norder) :: deltasllm_outside_maliMesh, deltasllm_inside_maliMesh
+   complex, dimension(0:norder,0:norder) :: maliMask_lm00, kFactor2_from_mali_lm00
+   real, dimension(nglv,2*nglv) :: mask_maliMesh
+   real :: mean_slc_outside_maliMesh, mean_slc_inside_maliMesh, mean_slc_sum, area_maliMesh
    contains
 
    !======================================================================================================================!
@@ -164,7 +169,7 @@ module sl_model_mod
                         outputfolder, outputfolder_ice, folder_coupled, ext, fType_in, fType_out, &
                         planetmodel, icemodel, icemodel_out, timearray, &
                         topomodel, topo_initial, grid_lat, grid_lon, &
-                        checkmarine, tpw, calcRG, input_times, &
+                        checkmarine, tpw, elastic_only, sl_sphharm, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, patch_ice, &
                         L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet)
 
@@ -491,6 +496,13 @@ module sl_model_mod
        endif
 
        if (coupling) then  !if coupling the ICE SHEET - SEA LEVEL MODELs
+          call spat2spec(mali_mask(:,:),maliMask_lm00(:,:),spheredat)
+          area_maliMesh = maliMask_lm00(0,0)*4*pi*radius**2
+          open(unit = 201, file = trim(outputfolder)//'area_mali_domain', form = 'formatted', access ='sequential', &
+          & status = 'replace')
+          write(201,'(ES14.4E2)') area_maliMesh
+          close(201)
+
           write(unit_num,*) 'Merge initial topography and iceload with the ISM data'
 
           ! merge intitial topography with bedrock provided by the ice sheet model.
@@ -501,6 +513,14 @@ module sl_model_mod
           enddo
 
           ! merge intitial topography with bedrock provided by the ice sheet model.
+          if (patch_ice) then
+             do j = 1,2*nglv
+                do i = 1,nglv
+                   icexy(i,j,nfiles) = 0.0
+                enddo
+             enddo
+          endif
+
           do j = 1,2*nglv
              do i = 1,nglv
                 icexy(i,j,nfiles) = mali_iceload(i,j) + icexy(i,j,nfiles)*(1 - mali_mask(i,j))
@@ -509,7 +529,8 @@ module sl_model_mod
 
           !write out the current ice load as a new file to the sea-level model ice folder
           call write_sl(icexy(:,:,nfiles), icemodel_out, outputfolder_ice, suffix=numstr)
-
+          !HH write out the mali mask file for debugging
+          call write_sl(mali_mask(:,:), "mali_mask_init", outputfolder)
       endif ! end if (coupling)
 
       !write out the initial topo of the simulation, tinit_0
@@ -628,6 +649,28 @@ module sl_model_mod
          & status = 'replace')
          write(201,'(ES14.4E2)') ice_volume
          close(201)
+
+         mean_slc = 0.0
+         ! for mean sea level directly calculated based on the deltasl variable
+         open(unit = 201, file = trim(outputfolder)//'gmsle_change', form = 'formatted', access ='sequential', &
+         & status = 'replace')
+         write(201,'(ES14.4E2)') mean_slc
+         close(201)
+
+         open(unit = 201, file = trim(outputfolder)//'gmsle_change_outside_maliMesh', form = 'formatted', access ='sequential', &
+         & status = 'replace')
+         write(201,'(ES14.4E2)') mean_slc
+         close(201)
+
+         open(unit = 201, file = trim(outputfolder)//'gmsle_change_inside_maliMesh', form = 'formatted', access ='sequential', &
+         & status = 'replace')
+         write(201,'(ES14.4E2)') mean_slc
+         close(201)
+
+         open(unit = 201, file = trim(outputfolder)//'gmsle_change_sumMesh', form = 'formatted', access ='sequential', &
+         & status = 'replace')
+         write(201,'(ES14.4E2)') mean_slc
+         close(201)
       endif
 
       !print out the number of iteration it takes for the inner convergence
@@ -645,13 +688,18 @@ module sl_model_mod
    end subroutine sl_solver_init
 
    !========================================================================================================================
-   subroutine sl_solver(itersl, iter, dtime, starttime, mali_iceload, mali_mask, slchange)
+   subroutine sl_solver(itersl, iter, dtime, starttime, mali_iceload, mali_mask, kFactor2_from_mali, slchange, kFactor2Inv_to_mali, mali_mask_ones_only)
       ! Compute sea-level change associated with past ice loading changes
 
-      real :: starttime
+      real :: starttime, k0, lat0, area_maliMesh_kFactor2
       integer :: iter, itersl, dtime
-      real, dimension(nglv,2*nglv), optional :: mali_iceload, mali_mask ! variables for coupled ISM-SLM simulations
-      real, dimension(nglv,2*nglv), intent(out), optional :: slchange ! variable exchanged with the ISM
+      real, dimension(nglv) :: lat512
+      real, dimension(2*nglv) :: lon512
+      real, dimension(nglv,2*nglv) :: kFactor
+      real, dimension(2*nglv,nglv) :: kFactor_test
+      real, dimension(nglv,2*nglv), optional :: mali_iceload, mali_mask, kFactor2_from_mali ! variables for coupled ISM-SLM simulations
+      real, dimension(nglv,2*nglv), intent(out), optional :: slchange, kFactor2Inv_to_mali ! variable exchanged with the ISM
+      integer, dimension(nglv,2*nglv), intent(out), optional :: mali_mask_ones_only
 
       !===========================================================
       !                   BEGIN TIMING & EXECUTION
@@ -660,6 +708,61 @@ module sl_model_mod
       call system_clock(count = counti, count_rate = countrate)  ! Total computation time
 
       if (coupling) then
+         ! calculate area of the mali domain based on the interpolated kFactor^2
+         call spat2spec(kFactor2_from_mali(:,:),kFactor2_from_mali_lm00(:,:),spheredat)
+         area_maliMesh_kFactor2 = kFactor2_from_mali_lm00(0,0)*4*pi*radius**2
+         open(unit = 201, file = trim(outputfolder)//'area_mali_domain_kFactor2', form = 'formatted', access ='sequential', &
+         & status = 'replace')
+         write(201,'(ES14.4E2)') area_maliMesh_kFactor2
+         close(201)
+
+         ! create mali masks of 1 on the sea-level model
+         mali_mask_ones_only(:,:) = 0.0
+         do j = 1,2*nglv
+            do i = 1,nglv
+                if (mali_mask(i,j) .NE. 0) then
+                   mali_mask_ones_only(i,j) = 1
+                endif
+            enddo
+         enddo
+
+         open(unit = 201, file = trim(gridfolder)//trim(grid_lat), form = 'formatted', &
+         & access = 'sequential', status = 'old')
+         read(201,*) lat512
+         close(201)
+         open(unit = 201, file = trim(gridfolder)//trim(grid_lon), form = 'formatted', &
+         & access = 'sequential', status = 'old')
+         read(201,*) lon512
+         close(201)
+
+         do j = 1,2*nglv
+            do i = 1,nglv
+                if (mali_mask(i,j) .NE. 0) then
+                   mali_mask_ones_only(i,j) = 1
+                endif
+            enddo
+         enddo
+
+         open(unit = 201, file = trim(outputfolder)//trim('mali_mask_ones_only_on_GLgrid'), form = 'formatted', &
+             & access = 'sequential', status = 'replace')
+             write(201,'(I2)') mali_mask_ones_only
+         close(201)
+
+         k0 = (1 - sin(-71 * 3.14159265359 / 180)) / 2 ! in radian
+         lat0 = -90 * 3.14159265359 / 180 ! center of the latitude in radian
+         !lon0 = 0 ! center of the longitude
+         kFactor= 0.0
+         do j = 1,2*nglv
+            do i = 1,nglv
+                !kFactor(i,j) =  2 * k0 / ( 1 + (sin(lat0) * sin(lat512(i) * 3.14159265359 / 180)) + (cos(lat0) * cos(lat512(i)* 3.14159265359 / 180) * cos((lon512(j)-180)* 3.14159265359 / 180)) )
+                kFactor_test(j,i) =  2 * k0 / ( 1 + (sin(lat0) * sin(lat512(i) * 3.14159265359 / 180)) + (cos(lat0) * cos(lat512(i)* 3.14159265359 / 180) * cos((lon512(j)-180)* 3.14159265359 / 180)) )
+            enddo
+         enddo
+         !call write_txt(kFactor, 'kFactor_on_GLgrid', outputfolder)
+         call write_txt(reshape(kFactor_test,[nglv,2*nglv]), 'kFactor_on_GLgrid_reshape', outputfolder)
+         !kFactor2Inv_to_mali = 1 / kFactor**2
+         kFactor2Inv_to_mali = reshape(1 / kFactor_test**2,[nglv,2*nglv])
+         call write_txt(kFactor2Inv_to_mali, 'kFactor2Inv_on_GLgrid', outputfolder)
 
          if (iter*dtime .GT. L_sim) then
             write(unit_num,*) 'ERROR: The current SLM simulation time exceeds the prescribed simulation length'
@@ -694,6 +797,14 @@ module sl_model_mod
 
             ! ice thickness at the current time step inside the ISM domain is provided by the ISM
             ! merge iceload configuration
+            if (patch_ice) then
+               do j = 1,2*nglv
+                  do i = 1,nglv
+                     icexy(i,j,nfiles) = 0.0
+                  enddo
+               enddo
+            endif
+
             do j = 1,2*nglv
                do i = 1,nglv
                   icexy(i,j,nfiles) = mali_iceload(i,j) + icexy(i,j,nfiles)*(1 - mali_mask(i,j))
@@ -735,7 +846,7 @@ module sl_model_mod
 
       !Read in the initial topography (topo at the beginning of the full simulation)
       !This is used to output the total sea level change from the beginning of the simulation
-      call read_sl(tinit_0, 'tgrid0', outputfolder)
+      call read_sl(tinit_0, 'tgrid', outputfolder, suffix='0')
 
       j = TIMEWINDOW(1) ! first element of the time window as the initial file
       write(unit_num,'(A,I4)') 'file number of the first item in the TW:', j
@@ -897,6 +1008,21 @@ module sl_model_mod
       r(:,:) = resh(:,:)
       rprimeT(:,:) = tresk(:,:)
       rT(:,:) = tresh(:,:)
+
+      !======================ELASTIC CHECK=======================
+      ! Zero out viscous love numbers if elastic_only is set to true
+      
+      if (elastic_only) then
+      rprime(:,:) = (0.0,0.0)
+      r(:,:) = (0.0,0.0)
+      rprimeT(:,:) = (0.0,0.0)
+      rT(:,:) = (0.0,0.0)
+
+      !L (horizontal) Love numbers are never actually used, but just in case
+      resl(:,:) = (0.0,0.0)
+      tresl(:,:) = (0.0,0.0)
+
+      endif
 
       !===========================================================
       !                       CALCULATIONS
@@ -1272,6 +1398,22 @@ module sl_model_mod
          enddo
       enddo
 
+      !======================SPHHARM SL OUTPUT CHECK=======================
+      ! Save delta sl as spherical harmonics if sl_sphharm is set to true
+
+      if (sl_sphharm) then
+      ! output converged total ocean loading changes
+      open(unit = 401, file = trim(outputfolder)//'dsl_sphharm'//trim(numstr), form = 'formatted', access = 'sequential', &
+      & status = 'replace')
+      do m = 0,norder
+        do n = 0,norder
+          write(401,'(ES14.7E2, ES14.7E2)') real(deltasllm(m,n)), aimag(deltasllm(m,n))
+        enddo
+      enddo
+      close(401)
+
+      endif
+
       !=========================================================================================
       !                          OUTPUT
       !_________________________________________________________________________________________
@@ -1303,14 +1445,6 @@ module sl_model_mod
       write(201,'(ES14.7E2)') deltaS(:,:,nfiles)
       close(201)
 
-      if (iceVolume) then
-         ice_volume = icestarlm(0,0)*4*pi*radius**2 !multiply the (0,0) component of ice to the area of a sphere
-         open(unit = 201, file = trim(outputfolder)//'ice_volume', form = 'formatted', access = 'sequential', &
-         & status = 'old', position = 'append')
-         write(201,'(ES14.4E2)') ice_volume
-         close(201)
-      endif
-
       current_time = iter * dt1     !time passed since the start of the simulation
       if (current_time == L_sim) then !if we are at the last time step of simulation
          write(iterstr,'(I2)') itersl
@@ -1331,7 +1465,51 @@ module sl_model_mod
          gg(:,:,nfiles) = deltaslxy(:,:)+rr(:,:,nfiles)
 
          call write_sl(gg(:,:,nfiles), 'G', outputfolder, suffix=numstr)
-       endif
+      endif
+
+      if (iceVolume) then
+         ice_volume = icestarlm(0,0)*4*pi*radius**2 !multiply the (0,0) component of ice to the area of a sphere
+         open(unit = 201, file = trim(outputfolder)//'ice_volume', form = 'formatted', access = 'sequential', &
+         & status = 'old', position = 'append')
+         write(201,'(ES14.4E2)') ice_volume
+         close(201)
+
+         ! calculate the mean SLC
+         mean_slc = deltasllm(0,0)
+         open(unit = 201, file = trim(outputfolder)//'gmsle_change', form = 'formatted', access ='sequential', &
+         & status = 'old', position = 'append')
+         write(201,'(ES14.4E2)') mean_slc
+         close(201)
+      endif
+
+      ! HH: outputs for debugging
+      if (coupling) then
+      call read_sl(mask_maliMesh, 'mali_mask_init', outputfolder)
+      deltaslxy_outside_maliMesh(:,:) = deltaslxy(:,:) * (1 - mask_maliMesh(:,:))
+      deltaslxy_inside_maliMesh(:,:) = deltaslxy(:,:) * mask_maliMesh(:,:)
+      call write_sl(deltaslxy_outside_maliMesh(:,:), 'deltaslxy_outside_maliMesh', outputfolder, suffix=numstr)
+      call write_sl(deltaslxy_inside_maliMesh(:,:), 'deltaslxy_inside_maliMesh', outputfolder, suffix=numstr)
+      call spat2spec(deltaslxy_outside_maliMesh(:,:), deltasllm_outside_maliMesh(:,:),spheredat)
+      call spat2spec(deltaslxy_inside_maliMesh(:,:), deltasllm_inside_maliMesh(:,:),spheredat)
+      mean_slc_outside_maliMesh = deltasllm_outside_maliMesh(0,0)
+      mean_slc_inside_maliMesh = deltasllm_inside_maliMesh(0,0)
+      mean_slc_sum = mean_slc_outside_maliMesh + mean_slc_inside_maliMesh
+      endif
+
+      open(unit = 201, file = trim(outputfolder)//'gmsle_change_outside_maliMesh', form = 'formatted', access ='sequential', &
+      & status = 'old', position = 'append')
+      write(201,'(ES14.4E2)') mean_slc_outside_maliMesh
+      close(201)
+
+      open(unit = 201, file = trim(outputfolder)//'gmsle_change_inside_maliMesh', form = 'formatted', access ='sequential', &
+      & status = 'old', position = 'append')
+      write(201,'(ES14.4E2)') mean_slc_inside_maliMesh
+      close(201)
+
+      open(unit = 201, file = trim(outputfolder)//'gmsle_change_sumMesh', form = 'formatted', access ='sequential', &
+      & status = 'old', position = 'append')
+      write(201,'(ES14.4E2)') mean_slc_sum
+      close(201)
 
       if (coupling) then
          ! topography change between the previous and the current timestep
