@@ -108,6 +108,7 @@ module user_specs_mod
                                                 ! .false. to assume all ice is grounded
    logical :: tpw = .true.           ! .true. to incorporate rotational feedback								                                                                                   ! .false. for non-rotating planet
    logical :: elastic_only = .false.           ! .true. to perform elastic only calculation                                                                                                       ! .false. for full viscoelastic calculation
+   logical :: sl_sphharm = .false.           ! .true. to save change in sea level spherical harmonics - dsl_sphharm file                                                                       ! .false. to not save spherical harmonics 
    logical :: calcRG = .true.       ! .true. to calculate the radial and geoid displacements; note that  
                                                 !    the "true" option only works for a fixed number of outer loops
                                                 !    (i.e., no convergence checks!).

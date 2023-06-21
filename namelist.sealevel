@@ -35,6 +35,7 @@
     checkmarine = .false.
     tpw = .true.
     elastic_only = .true.
+    sl_sphharm = .true.
     calcRG = .true.
     input_times = .false.
     initial_topo = .true.

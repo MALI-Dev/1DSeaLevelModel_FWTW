@@ -169,7 +169,7 @@ module sl_model_mod
                         outputfolder, outputfolder_ice, folder_coupled, ext, fType_in, fType_out, &
                         planetmodel, icemodel, icemodel_out, timearray, &
                         topomodel, topo_initial, grid_lat, grid_lon, &
-                        checkmarine, tpw, elastic_only, calcRG, input_times, &
+                        checkmarine, tpw, elastic_only, sl_sphharm, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, patch_ice, &
                         L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet)
 
@@ -1397,6 +1397,22 @@ module sl_model_mod
             endif
          enddo
       enddo
+
+      !======================SPHHARM SL OUTPUT CHECK=======================
+      ! Save delta sl as spherical harmonics if sl_sphharm is set to true
+
+      if (sl_sphharm) then
+      ! output converged total ocean loading changes
+      open(unit = 401, file = trim(outputfolder)//'dsl_sphharm'//trim(numstr), form = 'formatted', access = 'sequential', &
+      & status = 'replace')
+      do m = 0,norder
+        do n = 0,norder
+          write(401,'(ES14.7E2, ES14.7E2)') real(deltasllm(m,n)), aimag(deltasllm(m,n))
+        enddo
+      enddo
+      close(401)
+
+      endif
 
       !=========================================================================================
       !                          OUTPUT
