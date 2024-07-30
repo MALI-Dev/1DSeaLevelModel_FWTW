@@ -1087,7 +1087,7 @@ module sl_model_mod
              if (icexy(i, j, nfiles) < epsilon(0.0)) then
                 beta(i,j) = 1
              else
-                beta(i,j) = 0
+                beta(i,j) = 1
              endif
          enddo
       enddo
