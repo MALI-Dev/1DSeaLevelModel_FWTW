@@ -557,10 +557,27 @@ module sl_model_mod
 
 
       !========================== beta function =========================
+      if (checkmarine) then
+         write(unit_num,*) 'Performing Marine Check for initial beta'
+         do j = 1,2*nglv
+            do i = 1,nglv
+               if (tinit_0(i,j) > 0) then
+               ! If not marine...
+                  icestarxy(i,j) = icexy(i,j,1)
+               elseif (icexy(i,j,1) > (abs(tinit_0(i,j)) * rhow / rhoi)) then
+               !...else if marine, but thick enough to be grounded
+                  icestarxy(i,j) = icexy(i,j,1)
+               else
+               !...if floating ice
+                  icestarxy(i,j) = 0.0
+               endif
+            enddo
+         enddo
+      endif
       ! calculate initial beta
       do j = 1,2*nglv
          do i = 1,nglv
-            if (icexy(i,j,1)==0) then
+            if (icestarxy(i,j) < epsilon(0.0)) then
                beta0(i,j)=1
             else
                beta0(i,j)=0
@@ -636,15 +653,15 @@ module sl_model_mod
                      icestarxy(i,j) = icexy(i,j,1)
                   else
                      !...if floating ice
-                     icestarxy(i,j) = 0
+                     icestarxy(i,j) = 0.0
                   endif
                enddo
             enddo
                   ! Decompose ice field
-            call spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
          else ! If not checking for floating ice
-            call spat2spec(icexy(:,:,1),icestarlm(:,:),spheredat) ! Decompose ice field
+            icestarxy(:,:) = icexy(:,:,1)
          endif
+         call spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
 
          ice_volume = icestarlm(0,0)*4*pi*radius**2
 
@@ -1069,15 +1086,15 @@ module sl_model_mod
                      icestarxy(i,j) = icexy(i,j,n)
                   else
                   !...if floating ice
-                     icestarxy(i,j) = 0
+                     icestarxy(i,j) = 0.0
                   endif
                enddo
             enddo
             ! Decompose ice field
-            call spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
          else ! If not checking for floating ice
-            call spat2spec(icexy(:,:,n),icestarlm(:,:),spheredat) ! Decompose ice field
+            icestarxy(:,:) = icexy(:,:,n)
          endif
+         call spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
 
          if (n == 1) then
             dicestarlm(:,:) = 0.0            ! No change at first timestep
@@ -1100,7 +1117,7 @@ module sl_model_mod
       ! Calculate current beta based on iceload at the current timestep
       do j = 1, 2 * nglv
          do i = 1, nglv
-             if (icexy(i, j, nfiles) < epsilon(0.0)) then
+             if (icestarxy(i,j) < epsilon(0.0)) then
                 beta(i,j) = 1
              else
                 beta(i,j) = 0
