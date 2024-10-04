@@ -573,6 +573,8 @@ module sl_model_mod
                endif
             enddo
          enddo
+      else ! not checkmarine: use icexy unmodified
+         icestarxy(:,:) = icexy(:,:,1)
       endif
       ! calculate initial beta
       do j = 1,2*nglv
@@ -1076,6 +1078,7 @@ module sl_model_mod
       do n=1, nfiles
          ! Calculate icestar (STEP 3) (eq.43)
          if (checkmarine) then
+            write(unit_num,*) 'Performing Marine Check'
             do j = 1,2*nglv
                do i = 1,nglv
                   if (tinit(i,j) > 0) then
