@@ -24,8 +24,12 @@ FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian 
 LDFLAGS = -O3 -m64
 
 SH_BACKEND ?= spharmt
-SHTNS_INCLUDES ?=
-SHTNS_LIBDIR ?=
+FFTW_ROOT ?= external/fftw
+FFTW_PREFIX ?= $(CURDIR)/external/fftw/install
+SHTNS_ROOT ?= external/shtns
+SHTNS_PREFIX ?= $(CURDIR)/external/shtns/install
+SHTNS_INCLUDES ?= -I$(SHTNS_PREFIX)/include
+SHTNS_LIBDIR ?= -L$(SHTNS_PREFIX)/lib -L$(FFTW_PREFIX)/lib
 SHTNS_LIBS ?= -lshtns -lfftw3
 
 CPPFLAGS += -cpp
@@ -65,6 +69,7 @@ RM = rm -f
 ##########################
 
 .SUFFIXES: .f90 .o
+.PHONY: fftw-build shtns-build shtns-build-local
 
 
 OBJS = sl_model_driver.o \
@@ -76,6 +81,14 @@ OBJS = sl_model_driver.o \
        sl_init_mod.o
 
 all: slmodel.exe
+
+fftw-build:
+	cd $(FFTW_ROOT) && sh bootstrap.sh && ./configure --prefix=$(FFTW_PREFIX) --enable-shared --disable-static && make && make install
+
+shtns-build:
+	cd $(SHTNS_ROOT) && ./configure --prefix=$(SHTNS_PREFIX) CPPFLAGS="-I$(FFTW_PREFIX)/include" LDFLAGS="-L$(FFTW_PREFIX)/lib" LIBS="-lfftw3" && make && make install
+
+shtns-build-local: fftw-build shtns-build
 
 slmodel.exe: $(OBJS)
 	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)

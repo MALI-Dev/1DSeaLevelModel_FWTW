@@ -33,11 +33,26 @@ make
 
 ```bash
 make clean
-make SH_BACKEND=shtns SHTNS_INCLUDES="-I/path/to/shtns/include" SHTNS_LIBDIR="-L/path/to/shtns/lib"
+make shtns-build-local
+make SH_BACKEND=shtns
 ```
+
+By default, the root Makefile expects FFTW and SHTns as submodules and uses:
+
+- `FFTW_ROOT=external/fftw`
+- `FFTW_PREFIX=<repo>/external/fftw/install`
+
+- `SHTNS_ROOT=external/shtns`
+- `SHTNS_PREFIX=<repo>/external/shtns/install`
+- `SHTNS_INCLUDES=-I$(SHTNS_PREFIX)/include`
+- `SHTNS_LIBDIR=-L$(SHTNS_PREFIX)/lib -L$(FFTW_PREFIX)/lib`
+
+You can still override these variables if SHTns is installed elsewhere.
 
 Notes:
 
+- The selected FFTW repository is a source-generator tree. Building from that repo requires running `bootstrap.sh` and therefore additional build tools (e.g., autoconf/automake/libtool and OCaml tooling) before `configure` and `make`.
+- The helper target `make shtns-build-local` builds and installs FFTW first, then configures and builds SHTns against that local FFTW install.
 - The SHTns backend expects the Fortran include file `shtns.f` to be reachable through `SHTNS_INCLUDES`.
 - The default SHTns link list is `-lshtns -lfftw3` and can be overridden with `SHTNS_LIBS="..."`.
 - If `SH_BACKEND=shtns` is selected without valid SHTns include/lib paths, compilation will fail.
