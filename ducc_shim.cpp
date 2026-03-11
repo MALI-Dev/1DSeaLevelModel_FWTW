@@ -43,7 +43,8 @@ std::array<ptrdiff_t, 3> map_strides_for_fortran(const DuccPlan &p)
 
 std::size_t alm_extent(const DuccPlan &p)
 {
-    return static_cast<std::size_t>(p.ntrunc + 1) * static_cast<std::size_t>(p.ntrunc + 1);
+    const std::size_t n = static_cast<std::size_t>(p.ntrunc + 1);
+    return n * (n + 1) / 2;
 }
 
 } // namespace
