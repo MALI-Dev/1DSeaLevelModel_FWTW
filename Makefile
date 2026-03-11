@@ -111,6 +111,8 @@ SHTNS_TARGET_LIB ?= $(SHTNS_PREFIX)/lib/libshtns.a
 SHTNS_INCLUDE ?= $(SHTNS_PREFIX)/include
 SHTNS_LIBDIR ?= $(SHTNS_PREFIX)/lib
 SHTNS_CONFIGURE_ARGS ?=
+SHTNS_CONFIG_STAMP ?= $(SHTNS_BUILD_DIR)/.configured
+FFTW_READY_STAMP ?= $(FFTW_BUILD_DIR)/.fftw-ready
 
 # Specify NetCDF libraries, checking if netcdff is required (it will be present in v4 of netCDF)
 LIBS = -L$(NETCDF)/lib
@@ -227,9 +229,27 @@ fftw-check:
 	fi
 
 ifeq ($(FFTW_MODE),source)
-fftw-lib: $(FFTW_TARGET_LIB)
+fftw-lib: $(FFTW_READY_STAMP)
+
+$(FFTW_READY_STAMP): $(FFTW_TARGET_LIB)
+	@mkdir -p $(FFTW_BUILD_DIR)
+	@touch $@
 else
-fftw-lib: fftw-check
+fftw-lib: $(FFTW_READY_STAMP)
+
+$(FFTW_READY_STAMP):
+	@if [ ! -f "$(FFTW_PREFIX)/include/fftw3.h" ]; then \
+		echo "Missing FFTW header: $(FFTW_PREFIX)/include/fftw3.h"; \
+		echo "Install FFTW binaries there or run make FFTW_MODE=source fftw-lib"; \
+		exit 2; \
+	fi
+	@if [ ! -f "$(FFTW_PREFIX)/lib/libfftw3.a" ] && [ ! -f "$(FFTW_PREFIX)/lib/libfftw3.dylib" ] && [ ! -f "$(FFTW_PREFIX)/lib/libfftw3.so" ]; then \
+		echo "Missing FFTW library under $(FFTW_PREFIX)/lib (expected libfftw3.a/.dylib/.so)"; \
+		echo "Install FFTW binaries there or run make FFTW_MODE=source fftw-lib"; \
+		exit 2; \
+	fi
+	@mkdir -p $(FFTW_BUILD_DIR)
+	@touch $@
 endif
 
 shtns-lib: $(SHTNS_TARGET_LIB)
@@ -286,10 +306,18 @@ $(FFTW_TARGET_LIB): fftw-submodule
 	$(MAKE) -C $(FFTW_BUILD_SUBDIR) MAKEINFO=true
 	$(MAKE) -C $(FFTW_BUILD_SUBDIR) MAKEINFO=true install
 
-$(SHTNS_TARGET_LIB): shtns-submodule fftw-lib
+$(SHTNS_CONFIG_STAMP): $(SHTNS_DIR)/configure $(FFTW_READY_STAMP)
 	@mkdir -p $(SHTNS_BUILD_DIR)
+	@if [ ! -d "$(SHTNS_DIR)" ]; then \
+		echo "SHTns source directory not found: $(SHTNS_DIR)"; \
+		echo "Run make shtns-submodule or set SHTNS_DIR to a valid source tree."; \
+		exit 1; \
+	fi
 	cd $(SHTNS_DIR) && ./configure --prefix=$(abspath $(SHTNS_PREFIX)) \
 		CPPFLAGS="-I$(abspath $(FFTW_PREFIX))/include" LDFLAGS="-L$(abspath $(FFTW_PREFIX))/lib" LIBS="-lfftw3" $(SHTNS_CONFIGURE_ARGS)
+	@touch $@
+
+$(SHTNS_TARGET_LIB): $(SHTNS_CONFIG_STAMP)
 	$(MAKE) -C $(SHTNS_DIR)
 	$(MAKE) -C $(SHTNS_DIR) install
 
