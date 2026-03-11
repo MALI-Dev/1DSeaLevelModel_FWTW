@@ -139,7 +139,7 @@ contains
 
 
    subroutine sh_spat2spec(z, u, state)
-      type(sh_state), intent(in) :: state
+      type(sh_state), intent(inout) :: state
       real, intent(in) :: z(:,:)
       complex, intent(out) :: u(0:,0:)
 
@@ -154,7 +154,7 @@ contains
 
 
    subroutine sh_spec2spat(z, u, state)
-      type(sh_state), intent(in) :: state
+      type(sh_state), intent(inout) :: state
       real, intent(out) :: z(:,:)
       complex, intent(in) :: u(0:,0:)
 

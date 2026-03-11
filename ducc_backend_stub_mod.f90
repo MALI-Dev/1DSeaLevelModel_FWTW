@@ -5,7 +5,7 @@ module ducc_backend_mod
    implicit none
    private
 
-   public :: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat
+   public :: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat, ducc_configure
 
 contains
 
@@ -31,6 +31,17 @@ contains
 
       plan = c_null_ptr
    end subroutine ducc_destroy
+
+
+   subroutine ducc_configure(plan, use_direct_map, nthreads)
+      type(c_ptr), intent(in) :: plan
+      integer, intent(in) :: use_direct_map
+      integer, intent(in) :: nthreads
+
+      if (c_associated(plan) .and. (use_direct_map < -1 .or. nthreads < -1)) then
+         continue
+      endif
+   end subroutine ducc_configure
 
 
    subroutine ducc_spat2spec(z, u, plan)
