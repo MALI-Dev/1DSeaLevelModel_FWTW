@@ -36,7 +36,7 @@ std::array<ptrdiff_t, 3> map_strides_for_fortran(const DuccPlan &p)
 {
     // Fortran contiguous layout for map(nlat,nlon): latitude index is fastest.
     return {
-        static_cast<ptrdiff_t>(p.nlat) * static_cast<ptrdiff_t>(p.nlon),
+    0,
         1,
         static_cast<ptrdiff_t>(p.nlat)};
 }
@@ -125,7 +125,7 @@ void ducc_sh_spat2spec(void *plan_ptr, const double *z, void *u, int nlat, int n
             std::string("GL"),
             0.0,
             ringfactor,
-            0);
+            1);
     } catch (const std::exception &ex) {
         std::fprintf(stderr, "ducc_sh_spat2spec exception: %s\n", ex.what());
         std::abort();
@@ -172,7 +172,7 @@ void ducc_sh_spec2spat(void *plan_ptr, double *z, const void *u, int nlat, int n
             std::string("GL"),
             0.0,
             ringfactor,
-            0,
+            1,
             ducc0::STANDARD);
     } catch (const std::exception &ex) {
         std::fprintf(stderr, "ducc_sh_spec2spat exception: %s\n", ex.what());
