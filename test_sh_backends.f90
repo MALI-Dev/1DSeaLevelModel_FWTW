@@ -4,9 +4,9 @@ program test_sh_backends
 
    implicit none
 
-   integer, parameter :: nlat = 32
-   integer, parameter :: nlon = 64
-   integer, parameter :: ntrunc = 31
+   integer, parameter :: nlat = 512
+   integer, parameter :: nlon = 1024
+   integer, parameter :: ntrunc = 256
    real, parameter :: radius = 6371000.0
 
    integer :: i, j
@@ -19,9 +19,12 @@ program test_sh_backends
    real :: ratio_spat2spec, ratio_spec2spat
 
    type(sh_state) :: sh_spharmt, sh_ducc
-   real, dimension(nlat, nlon) :: z
-   real, dimension(nlat, nlon) :: z_spharmt, z_ducc
-   complex, dimension(0:ntrunc,0:ntrunc) :: u_spharmt, u_ducc
+   real, allocatable, dimension(:,:) :: z
+   real, allocatable, dimension(:,:) :: z_spharmt, z_ducc
+   complex, allocatable, dimension(:,:) :: u_spharmt, u_ducc
+
+   allocate(z(nlat, nlon), z_spharmt(nlat, nlon), z_ducc(nlat, nlon))
+   allocate(u_spharmt(0:ntrunc,0:ntrunc), u_ducc(0:ntrunc,0:ntrunc))
 
    pi = acos(-1.0)
 
@@ -80,6 +83,8 @@ program test_sh_backends
 
    call sh_destroy(sh_spharmt)
    call sh_destroy(sh_ducc)
+
+   deallocate(z, z_spharmt, z_ducc, u_spharmt, u_ducc)
 
 contains
 
