@@ -2,7 +2,7 @@ module sh_backend_mod
 
    use iso_c_binding, only: c_ptr, c_null_ptr
    use spharmt, only: sphere, spharmt_init, spharmt_destroy, spat2spec, spec2spat
-   use ducc_backend_mod, only: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat
+   use ducc_backend_mod, only: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat, ducc_configure
 
    implicit none
    private
@@ -51,13 +51,16 @@ contains
    end function sh_backend_available
 
 
-   subroutine sh_initialize(state, backend_name, nlon, nlat, ntrunc, re, unit_num)
+   subroutine sh_initialize(state, backend_name, nlon, nlat, ntrunc, re, unit_num, ducc_direct_map, ducc_sht_threads)
       type(sh_state), intent(inout) :: state
       character(*), intent(in) :: backend_name
       integer, intent(in) :: nlon, nlat, ntrunc
       real, intent(in) :: re
       integer, intent(in) :: unit_num
+      logical, intent(in), optional :: ducc_direct_map
+      integer, intent(in), optional :: ducc_sht_threads
       character(16) :: key
+      integer :: direct_map_flag, thread_count
 
       key = trim(adjustl(lower_string(backend_name)))
 
@@ -68,6 +71,22 @@ contains
             stop
          endif
          call ducc_init(state%ducc_plan, nlon, nlat, ntrunc, re)
+
+         direct_map_flag = -1
+         if (present(ducc_direct_map)) then
+            if (ducc_direct_map) then
+               direct_map_flag = 1
+            else
+               direct_map_flag = 0
+            endif
+         endif
+
+         thread_count = -1
+         if (present(ducc_sht_threads)) then
+            thread_count = ducc_sht_threads
+         endif
+         call ducc_configure(state%ducc_plan, direct_map_flag, thread_count)
+
          state%backend = 'ducc'
       elseif (key == 'spharmt') then
          call spharmt_init(state%spheredat, nlon, nlat, ntrunc, re)

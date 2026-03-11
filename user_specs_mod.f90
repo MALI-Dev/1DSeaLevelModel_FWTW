@@ -93,6 +93,8 @@ module user_specs_mod
    character(6) :: fType_in  = 'text'  ! 'netcdf' | 'text'
    character(6) :: fType_out = 'text'  ! 'netcdf' | 'text' | 'both' for both netcdf and text format
    character(16) :: sh_backend = 'spharmt' ! 'spharmt' | 'ducc'
+   logical :: ducc_direct_map = .true. ! Used when sh_backend='ducc'; .true. uses direct Fortran-strided map path
+   integer :: ducc_sht_threads = 1     ! Used when sh_backend='ducc'; >0 sets DUCC transform thread count
    
    ! Various selection ================================================================================================!
    character(5)  :: whichplanet   = 'earth'                    ! e.g. 'earth', 'Mars', etc.

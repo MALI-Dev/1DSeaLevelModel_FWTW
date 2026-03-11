@@ -27,6 +27,11 @@ The model now supports runtime selection of spherical harmonic backend through t
 
 If `sh_backend='ducc'` is requested in a binary built without DUCC support, the model terminates with a clear error.
 
+For main model runs, DUCC runtime tuning can also be set in `namelist.sealevel` under `&others`:
+
+- `ducc_direct_map = .true.` enables the direct Fortran-strided map path (`.false.` uses fallback copy path).
+- `ducc_sht_threads = 1` sets DUCC transform threads (must be positive to take effect).
+
 ### Fetch DUCC source submodule
 
 ```bash

@@ -164,7 +164,8 @@ module sl_model_mod
                         topomodel, topo_initial, grid_lat, grid_lon, &
                         checkmarine, tpw, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, patch_ice, &
-                        L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet, sh_backend)
+                        L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet, sh_backend, &
+                        ducc_direct_map, ducc_sht_threads)
 
       call sl_get_model_res(norder, nglv)
 
@@ -522,6 +523,7 @@ module sl_model_mod
    subroutine sl_solver_checkpoint(itersl, dtime)
 
       integer :: itersl, dtime
+      character(16) :: backend_key
 
       if (dtime /= dt1) then
          write(unit_num,*) 'dtime and dt1 should be equal to each other.'
@@ -548,9 +550,22 @@ module sl_model_mod
       ! set up the planet profile
       call set_planet
 
+      if (ducc_sht_threads < 1) then
+         write(unit_num,*) 'DUCC thread count must be >= 1; resetting to 1.'
+         ducc_sht_threads = 1
+      endif
+
       ! initalize spherical harmonics
-      call sh_initialize(spheredat, sh_backend, 2*nglv, nglv, norder, radius, unit_num)
-      write(unit_num,*) 'Spherical harmonic backend: ', trim(sh_backend)
+      call sh_initialize(spheredat, sh_backend, 2*nglv, nglv, norder, radius, unit_num, &
+                         ducc_direct_map, ducc_sht_threads)
+
+      backend_key = trim(adjustl(sh_backend))
+      if (backend_key == 'ducc' .or. backend_key == 'DUCC' .or. backend_key == 'Ducc') then
+         write(unit_num,'(A,A,A,L1,A,I0)') 'SH backend config: backend=', trim(sh_backend), &
+              ' ducc_direct_map=', ducc_direct_map, ' ducc_sht_threads=', ducc_sht_threads
+      else
+         write(unit_num,'(A,A)') 'SH backend config: backend=', trim(sh_backend)
+      endif
 
    end subroutine sl_solver_checkpoint
    !_______________________________________________________________________________________________________________________!

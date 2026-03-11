@@ -7,7 +7,7 @@ module ducc_backend_mod
 
    real(c_double), parameter :: sh_norm = 1.41421356d0
 
-   public :: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat
+   public :: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat, ducc_configure
 
    interface
       function ducc_sh_init_c(nlon, nlat, ntrunc, re) bind(c, name='ducc_sh_init') result(plan)
@@ -21,6 +21,13 @@ module ducc_backend_mod
          use iso_c_binding, only: c_ptr
          type(c_ptr), value :: plan
       end subroutine ducc_sh_destroy_c
+
+      subroutine ducc_sh_set_options_c(plan, use_direct_map, nthreads) bind(c, name='ducc_sh_set_options')
+         use iso_c_binding, only: c_ptr, c_int
+         type(c_ptr), value :: plan
+         integer(c_int), value :: use_direct_map
+         integer(c_int), value :: nthreads
+      end subroutine ducc_sh_set_options_c
 
       subroutine ducc_sh_spat2spec_c(plan, z, u, nlat, nlon, ntrunc) bind(c, name='ducc_sh_spat2spec')
          use iso_c_binding, only: c_ptr, c_int, c_double, c_double_complex
@@ -68,6 +75,19 @@ contains
       endif
       plan = c_null_ptr
    end subroutine ducc_destroy
+
+
+   subroutine ducc_configure(plan, use_direct_map, nthreads)
+      type(c_ptr), intent(in) :: plan
+      integer, intent(in) :: use_direct_map
+      integer, intent(in) :: nthreads
+
+      if (.not. c_associated(plan)) then
+         return
+      endif
+
+      call ducc_sh_set_options_c(plan, int(use_direct_map, c_int), int(nthreads, c_int))
+   end subroutine ducc_configure
 
 
    subroutine ducc_spat2spec(z, u, plan)

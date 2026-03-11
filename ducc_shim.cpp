@@ -115,6 +115,21 @@ void ducc_sh_destroy(void *plan)
     delete as_plan(plan);
 }
 
+void ducc_sh_set_options(void *plan_ptr, int use_direct_map, int nthreads)
+{
+    auto *plan = as_plan(plan_ptr);
+    if (plan == nullptr) {
+        return;
+    }
+
+    if (use_direct_map >= 0) {
+        plan->use_direct_map = (use_direct_map != 0);
+    }
+    if (nthreads > 0) {
+        plan->nthreads = nthreads;
+    }
+}
+
 void ducc_sh_spat2spec(void *plan_ptr, const double *z, void *u, int nlat, int nlon, int ntrunc)
 {
     auto *plan = as_plan(plan_ptr);
