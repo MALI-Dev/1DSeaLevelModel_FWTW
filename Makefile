@@ -67,6 +67,8 @@ DUCC_SRCS = \
 	$(DUCC_DIR)/src/ducc0/math/wigner3j.cc \
 	$(DUCC_DIR)/src/ducc0/math/space_filling.cc \
 	$(DUCC_DIR)/src/ducc0/sht/sht.cc \
+	$(DUCC_DIR)/src/ducc0/fft/fft_inst1.cc \
+	$(DUCC_DIR)/src/ducc0/fft/fft_inst2.cc \
 	$(DUCC_DIR)/src/ducc0/wgridder/wgridder.cc \
 	$(DUCC_DIR)/src/ducc0/infra/string_utils.cc \
 	$(DUCC_DIR)/src/ducc0/infra/communication.cc \
