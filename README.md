@@ -77,7 +77,35 @@ The test reports:
 - Relative spatial difference after synthesis
 - Round-trip relative errors for each backend
 - `cpu_time` timings and speedup ratios for `spat2spec` and `spec2spat`
+- Overhead breakdown (`grid generation`, per-backend init, warmup, benchmark total)
+
+### DUCC Performance Defaults and Tuning
+
+Current default plan prioritizes DUCC throughput while preserving a fallback:
+
+- Direct Fortran-strided DUCC map path is enabled by default.
+- DUCC shim default thread count is 1 unless overridden.
+
+Runtime controls:
+
+```bash
+# Force fallback copy path instead of direct strided map path
+DUCC_DIRECT_MAP=0 ./sh_backend_test.exe
+
+# Set DUCC transform threads
+DUCC_SHT_THREADS=4 ./sh_backend_test.exe
+```
+
+Build-time defaults (override when invoking `make`):
+
+```bash
+# Compile shim with fallback path as default
+make USE_DUCC=1 DUCC_DIRECT_MAP_DEFAULT=0
+
+# Compile shim with a different default thread count
+make USE_DUCC=1 DUCC_SHT_THREADS_DEFAULT=4
+```
 
 Notes:
 - `DUCC_LIBS` should include the C-ABI shim library providing `ducc_sh_init`, `ducc_sh_destroy`, `ducc_sh_spat2spec`, and `ducc_sh_spec2spat`.
-- The Makefile adds `-lstdc++` automatically when `USE_DUCC=1`.
+- The Makefile links DUCC with the platform C++ stdlib automatically (`-lc++` on macOS, `-lstdc++` otherwise).

@@ -5,11 +5,18 @@
 #include <cstdlib>
 #include <new>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "ducc0/sht/sht.h"
 #include "ducc0/infra/mav.h"
+
+#ifndef DUCC_DIRECT_MAP_DEFAULT
+#define DUCC_DIRECT_MAP_DEFAULT 1
+#endif
+
+#ifndef DUCC_SHT_THREADS_DEFAULT
+#define DUCC_SHT_THREADS_DEFAULT 1
+#endif
 
 namespace {
 
@@ -70,8 +77,8 @@ void *ducc_sh_init(int nlon, int nlat, int ntrunc, double re)
         plan->nlon = nlon;
         plan->nlat = nlat;
         plan->ntrunc = ntrunc;
-        plan->nthreads = 1;
-        plan->use_direct_map = true;
+        plan->nthreads = (DUCC_SHT_THREADS_DEFAULT > 0) ? DUCC_SHT_THREADS_DEFAULT : 1;
+        plan->use_direct_map = (DUCC_DIRECT_MAP_DEFAULT != 0);
         plan->mstart.resize(static_cast<std::size_t>(ntrunc + 1));
         plan->ringfactor.assign(static_cast<std::size_t>(nlat), 1.0);
         plan->mapbuf.resize(static_cast<std::size_t>(nlat) * static_cast<std::size_t>(nlon));
