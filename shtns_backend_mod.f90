@@ -18,6 +18,7 @@ module shtns_backend_mod
       integer :: nphi = 0
       integer :: ntrunc = 0
       integer :: nlm = 0
+      integer :: lm_index_base = 0
       logical :: initialized = .false.
       complex(c_double_complex), allocatable :: qlm(:)
       real(c_double), allocatable :: spat_phi_lat(:,:)
@@ -89,6 +90,8 @@ contains
       type(shtns_state), intent(inout) :: state
       integer, intent(in) :: nlon, nlat, ntrunc
       integer(c_int) :: norm, layout
+      integer(c_int) :: lm00_c, lmmax_c
+      integer :: lm00, lmmax
       real(c_double) :: eps_polar
 
       call shtns_destroy(state)
@@ -108,6 +111,19 @@ contains
       state%nlat = nlat
       state%nphi = nlon
       state%ntrunc = ntrunc
+
+      lm00_c = shtns_lmidx_c(state%cfg, int(0, c_int), int(0, c_int))
+      lmmax_c = shtns_lmidx_c(state%cfg, int(ntrunc, c_int), int(ntrunc, c_int))
+      lm00 = int(lm00_c)
+      lmmax = int(lmmax_c)
+      if (lm00 == 0 .and. lmmax == state%nlm - 1) then
+         state%lm_index_base = 0
+      elseif (lm00 == 1 .and. lmmax == state%nlm) then
+         state%lm_index_base = 1
+      else
+         write(*,*) 'Unexpected SHTns lm index range: lm(0,0)=', lm00, ' lm(n,n)=', lmmax, ' nlm=', state%nlm
+         stop
+      endif
 
       allocate(state%qlm(state%nlm))
       allocate(state%spat_phi_lat(state%nphi, state%nlat))
@@ -152,6 +168,7 @@ contains
       state%nphi = 0
       state%ntrunc = 0
       state%nlm = 0
+      state%lm_index_base = 0
       state%initialized = .false.
    end subroutine shtns_destroy
 
@@ -184,7 +201,11 @@ contains
       do m = 0, state%ntrunc
          do l = m, state%ntrunc
             lm_c = shtns_lmidx_c(state%cfg, int(l, c_int), int(m, c_int))
-            lm = int(lm_c) + 1
+            lm = int(lm_c) + 1 - state%lm_index_base
+            if (lm < 1 .or. lm > state%nlm) then
+               write(*,*) 'SHTns lm index out of bounds in spat2spec: l,m,lm,nlm=', l, m, lm, state%nlm
+               stop
+            endif
             u_l_m(l,m) = cmplx(real(state%qlm(lm), c_double), aimag(state%qlm(lm)), kind=kind(u_l_m)) / sh_norm
          enddo
       enddo
@@ -211,7 +232,11 @@ contains
       do m = 0, state%ntrunc
          do l = m, state%ntrunc
             lm_c = shtns_lmidx_c(state%cfg, int(l, c_int), int(m, c_int))
-            lm = int(lm_c) + 1
+            lm = int(lm_c) + 1 - state%lm_index_base
+            if (lm < 1 .or. lm > state%nlm) then
+               write(*,*) 'SHTns lm index out of bounds in spec2spat: l,m,lm,nlm=', l, m, lm, state%nlm
+               stop
+            endif
             state%qlm(lm) = cmplx(real(u_l_m(l,m), c_double), aimag(u_l_m(l,m)), kind=kind(state%qlm)) * sh_norm
          enddo
       enddo
