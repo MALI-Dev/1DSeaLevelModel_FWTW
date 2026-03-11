@@ -22,6 +22,9 @@
 FC = gfortran
 FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian -ffpe-summary=none -g
 LDFLAGS = -O3 -m64
+CXX ?= g++
+AR ?= ar
+RANLIB ?= ranlib
 
 
 CPP = cpp -P -traditional
@@ -30,8 +33,36 @@ CPPINCLUDES =
 INCLUDES = -I$(NETCDF)/include -I.
 
 USE_DUCC ?= 0
-DUCC_INCLUDE ?=
-DUCC_LIBS ?=
+DUCC_DIR ?= external/ducc
+DUCC_INCLUDE ?= $(DUCC_DIR)/src
+DUCC_BUILD_DIR ?= $(DUCC_DIR)/build-local
+DUCC_OBJ_DIR ?= $(DUCC_BUILD_DIR)/obj
+DUCC_TARGET_LIB ?= $(DUCC_BUILD_DIR)/libducc0.a
+DUCC_SHIM_SRC ?= ducc_shim.cpp
+DUCC_SHIM_OBJ ?= $(DUCC_BUILD_DIR)/ducc_shim.o
+DUCC_SHIM_LIB ?= $(DUCC_BUILD_DIR)/libducc_shim.a
+DUCC_CXXFLAGS ?= -O3 -std=c++17 -fPIC -I$(DUCC_INCLUDE)
+DUCC_SYS_LIBS ?= -lpthread
+DUCC_EXTRA_LIBS ?=
+
+DUCC_SRCS = \
+        $(DUCC_DIR)/src/ducc0/healpix/healpix_base.cc \
+        $(DUCC_DIR)/src/ducc0/healpix/healpix_tables.cc \
+        $(DUCC_DIR)/src/ducc0/math/gl_integrator.cc \
+        $(DUCC_DIR)/src/ducc0/math/pointing.cc \
+        $(DUCC_DIR)/src/ducc0/math/gridding_kernel.cc \
+        $(DUCC_DIR)/src/ducc0/math/geom_utils.cc \
+        $(DUCC_DIR)/src/ducc0/math/wigner3j.cc \
+        $(DUCC_DIR)/src/ducc0/math/space_filling.cc \
+        $(DUCC_DIR)/src/ducc0/wgridder/wgridder.cc \
+        $(DUCC_DIR)/src/ducc0/infra/string_utils.cc \
+        $(DUCC_DIR)/src/ducc0/infra/communication.cc \
+        $(DUCC_DIR)/src/ducc0/infra/types.cc \
+        $(DUCC_DIR)/src/ducc0/infra/system.cc \
+        $(DUCC_DIR)/src/ducc0/infra/threading.cc \
+        $(DUCC_DIR)/src/ducc0/infra/mav.cc
+
+DUCC_OBJS = $(patsubst $(DUCC_DIR)/src/%.cc,$(DUCC_OBJ_DIR)/%.o,$(DUCC_SRCS))
 
 # Specify NetCDF libraries, checking if netcdff is required (it will be present in v4 of netCDF)
 LIBS = -L$(NETCDF)/lib
@@ -46,7 +77,10 @@ ifeq ($(USE_DUCC),1)
 ifneq ($(DUCC_INCLUDE),)
 INCLUDES += -I$(DUCC_INCLUDE)
 endif
-LIBS += $(DUCC_LIBS) -lstdc++
+ifeq ($(wildcard $(DUCC_DIR)/CMakeLists.txt),)
+$(error USE_DUCC=1 but DUCC submodule not found at $(DUCC_DIR). Run `make ducc-submodule`)
+endif
+LIBS += -L$(DUCC_BUILD_DIR) -lducc_shim -lducc0 -lstdc++ $(DUCC_SYS_LIBS) $(DUCC_EXTRA_LIBS)
 DUCC_OBJ = ducc_backend_mod.o
 else
 DUCC_OBJ = ducc_backend_stub_mod.o
@@ -72,12 +106,42 @@ all: slmodel.exe
 slmodel.exe: $(OBJS)
 	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
+ifeq ($(USE_DUCC),1)
+slmodel.exe: $(DUCC_TARGET_LIB) $(DUCC_SHIM_LIB)
+endif
+
 sl_model_driver.o: sl_model_mod.o
 sl_model_mod.o: sh_backend_mod.o user_specs_mod.o sl_init_mod.o
 sh_backend_mod.o: spharmt.o $(DUCC_OBJ)
 
 clean:
 	$(RM) *.o *.mod slmodel.exe
+	$(RM) -r $(DUCC_BUILD_DIR)
+
+ducc-submodule:
+	git submodule update --init --recursive $(DUCC_DIR)
+
+ducc-lib: $(DUCC_TARGET_LIB)
+
+ducc-shim: $(DUCC_SHIM_LIB)
+
+$(DUCC_TARGET_LIB): ducc-submodule $(DUCC_OBJS)
+	@mkdir -p $(DUCC_BUILD_DIR)
+	$(AR) rcs $@ $(DUCC_OBJS)
+	$(RANLIB) $@
+
+$(DUCC_SHIM_LIB): ducc-submodule $(DUCC_TARGET_LIB) $(DUCC_SHIM_OBJ)
+	@mkdir -p $(DUCC_BUILD_DIR)
+	$(AR) rcs $@ $(DUCC_SHIM_OBJ)
+	$(RANLIB) $@
+
+$(DUCC_SHIM_OBJ): $(DUCC_SHIM_SRC)
+	@mkdir -p $(DUCC_BUILD_DIR)
+	$(CXX) $(DUCC_CXXFLAGS) -c $< -o $@
+
+$(DUCC_OBJ_DIR)/%.o: $(DUCC_DIR)/src/%.cc
+	@mkdir -p $(dir $@)
+	$(CXX) $(DUCC_CXXFLAGS) -c $< -o $@
 
 %.o : %.f90
 	$(FC)  $(FFLAGS) -c  $< $(INCLUDES)

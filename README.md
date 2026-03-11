@@ -27,6 +27,14 @@ The model now supports runtime selection of spherical harmonic backend through t
 
 If `sh_backend='ducc'` is requested in a binary built without DUCC support, the model terminates with a clear error.
 
+### Fetch DUCC source submodule
+
+```bash
+make ducc-submodule
+```
+
+This initializes/updates the DUCC source at `external/ducc`.
+
 ### Build without DUCC (default)
 
 ```bash
@@ -38,7 +46,19 @@ make
 
 ```bash
 make clean
-make USE_DUCC=1 DUCC_INCLUDE=/path/to/ducc/include DUCC_LIBS="-L/path/to/lib -lducc_shim -lducc0"
+make USE_DUCC=1
+```
+
+By default, `DUCC_DIR=external/ducc` and `DUCC_INCLUDE=$(DUCC_DIR)/src`.
+When `USE_DUCC=1`, the Makefile now builds a local static DUCC library at
+`external/ducc/build-local/libducc0.a` automatically.
+It also builds a local C-ABI shim library at `external/ducc/build-local/libducc_shim.a`.
+
+You can also build it explicitly:
+
+```bash
+make ducc-lib
+make ducc-shim
 ```
 
 Notes:
