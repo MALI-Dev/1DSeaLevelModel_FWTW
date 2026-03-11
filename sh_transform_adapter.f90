@@ -90,7 +90,7 @@ contains
 
    subroutine sh_spat2spec(z, u, handle)
 
-      type(sh_transform), intent(in) :: handle
+      type(sh_transform), intent(inout) :: handle
       real, dimension(:,:), intent(in) :: z
       complex, dimension(0:,0:), intent(out) :: u
 
@@ -111,7 +111,7 @@ contains
 
    subroutine sh_spec2spat(z, u, handle)
 
-      type(sh_transform), intent(in) :: handle
+      type(sh_transform), intent(inout) :: handle
       real, dimension(:,:), intent(out) :: z
       complex, dimension(0:,0:), intent(in) :: u
 

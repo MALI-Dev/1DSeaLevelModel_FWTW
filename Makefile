@@ -47,19 +47,28 @@ endif
 
 CPP = cpp -P -traditional
 CPPINCLUDES = 
-INCLUDES = -I$(NETCDF)/include -I.
+INCLUDES = -I.
+
+ifneq ($(strip $(NETCDF)),)
+  INCLUDES += -I$(NETCDF)/include
+endif
 
 ifneq ($(strip $(SHTNS_INCLUDES)),)
         INCLUDES += $(SHTNS_INCLUDES)
 endif
 
 # Specify NetCDF libraries, checking if netcdff is required (it will be present in v4 of netCDF)
-LIBS = -L$(NETCDF)/lib
+LIBS =
+ifneq ($(strip $(NETCDF)),)
+	LIBS += -L$(NETCDF)/lib
+endif
 NCLIB = -lnetcdf
 NCLIBF = -lnetcdff
+ifneq ($(strip $(NETCDF)),)
 ifneq ($(wildcard $(NETCDF)/lib/libnetcdff.*), ) # CHECK FOR NETCDF4
         LIBS += $(NCLIBF)
 endif # CHECK FOR NETCDF4
+endif
 LIBS += $(NCLIB)
 
 ifneq ($(strip $(SHTNS_LIBDIR)),)
