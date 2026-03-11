@@ -5,6 +5,8 @@ module ducc_backend_mod
    implicit none
    private
 
+   real(c_double), parameter :: sh_norm = 1.41421356d0
+
    public :: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat
 
    interface
@@ -75,17 +77,27 @@ contains
       real(c_double), allocatable :: zbuf(:)
       complex(c_double_complex), allocatable :: ubuf(:)
       integer :: nlat, nlon, ntrunc
+      integer :: m, n, idx, nspec
 
       nlat = size(z, 1)
       nlon = size(z, 2)
       ntrunc = size(u, 1) - 1
+      nspec = (ntrunc+1)*(ntrunc+2)/2
 
       allocate(zbuf(nlat*nlon))
-      allocate(ubuf((ntrunc+1)*(ntrunc+1)))
+      allocate(ubuf(nspec))
 
       zbuf = reshape(real(z, c_double), (/nlat*nlon/))
       call ducc_sh_spat2spec_c(plan, zbuf, ubuf, int(nlat, c_int), int(nlon, c_int), int(ntrunc, c_int))
-      u = reshape(cmplx(real(ubuf), aimag(ubuf), kind=kind(u)), shape(u))
+
+      u = (0.0, 0.0)
+      idx = 1
+      do m = 0, ntrunc
+         do n = m, ntrunc
+            u(n,m) = cmplx(real(ubuf(idx)), aimag(ubuf(idx)), kind=kind(u(0,0))) / sh_norm
+            idx = idx + 1
+         enddo
+      enddo
 
       deallocate(zbuf, ubuf)
    end subroutine ducc_spat2spec
@@ -98,15 +110,24 @@ contains
       real(c_double), allocatable :: zbuf(:)
       complex(c_double_complex), allocatable :: ubuf(:)
       integer :: nlat, nlon, ntrunc
+      integer :: m, n, idx, nspec
 
       nlat = size(z, 1)
       nlon = size(z, 2)
       ntrunc = size(u, 1) - 1
+      nspec = (ntrunc+1)*(ntrunc+2)/2
 
       allocate(zbuf(nlat*nlon))
-      allocate(ubuf((ntrunc+1)*(ntrunc+1)))
+      allocate(ubuf(nspec))
 
-      ubuf = reshape(cmplx(real(u, c_double), aimag(u), kind=kind(ubuf)), (/size(ubuf)/))
+      idx = 1
+      do m = 0, ntrunc
+         do n = m, ntrunc
+            ubuf(idx) = cmplx(real(u(n,m), c_double), aimag(u(n,m)), kind=kind(ubuf)) * sh_norm
+            idx = idx + 1
+         enddo
+      enddo
+
       call ducc_sh_spec2spat_c(plan, zbuf, ubuf, int(nlat, c_int), int(nlon, c_int), int(ntrunc, c_int))
       z = reshape(real(zbuf, kind(z)), shape(z))
 

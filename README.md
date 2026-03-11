@@ -61,6 +61,23 @@ make ducc-lib
 make ducc-shim
 ```
 
+## Standalone Backend Comparison Test
+
+You can compare transform differences and CPU timing between `spharmt` and `ducc`
+without running the full sea-level solver:
+
+```bash
+make clean
+make USE_DUCC=1 sh-backend-test
+./sh_backend_test.exe
+```
+
+The test reports:
+- Relative spectral difference (DUCC vs spharmt)
+- Relative spatial difference after synthesis
+- Round-trip relative errors for each backend
+- `cpu_time` timings and speedup ratios for `spat2spec` and `spec2spat`
+
 Notes:
 - `DUCC_LIBS` should include the C-ABI shim library providing `ducc_sh_init`, `ducc_sh_destroy`, `ducc_sh_spat2spec`, and `ducc_sh_spec2spat`.
 - The Makefile adds `-lstdc++` automatically when `USE_DUCC=1`.
