@@ -161,6 +161,7 @@ contains
       real, intent(in) :: z_lat_phi(:,:)
       complex, intent(out) :: u_l_m(0:,0:)
       integer :: it, ip, l, m, lm
+      integer(c_int) :: lm_c
 
       if (.not. state%initialized) then
          write(*,*) 'SHTns backend not initialized before shtns_spat2spec.'
@@ -182,7 +183,8 @@ contains
       u_l_m = (0.0, 0.0)
       do m = 0, state%ntrunc
          do l = m, state%ntrunc
-            lm = shtns_lmidx_c(state%cfg, int(l, c_int), int(m, c_int))
+            lm_c = shtns_lmidx_c(state%cfg, int(l, c_int), int(m, c_int))
+            lm = int(lm_c) + 1
             u_l_m(l,m) = cmplx(real(state%qlm(lm), c_double), aimag(state%qlm(lm)), kind=kind(u_l_m)) / sh_norm
          enddo
       enddo
@@ -194,6 +196,7 @@ contains
       real, intent(out) :: z_lat_phi(:,:)
       complex, intent(in) :: u_l_m(0:,0:)
       integer :: it, ip, l, m, lm
+      integer(c_int) :: lm_c
 
       if (.not. state%initialized) then
          write(*,*) 'SHTns backend not initialized before shtns_spec2spat.'
@@ -207,7 +210,8 @@ contains
       state%qlm = (0.0d0, 0.0d0)
       do m = 0, state%ntrunc
          do l = m, state%ntrunc
-            lm = shtns_lmidx_c(state%cfg, int(l, c_int), int(m, c_int))
+            lm_c = shtns_lmidx_c(state%cfg, int(l, c_int), int(m, c_int))
+            lm = int(lm_c) + 1
             state%qlm(lm) = cmplx(real(u_l_m(l,m), c_double), aimag(u_l_m(l,m)), kind=kind(state%qlm)) * sh_norm
          enddo
       enddo
