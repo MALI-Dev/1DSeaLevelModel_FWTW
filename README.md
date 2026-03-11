@@ -16,3 +16,28 @@ To the users of this code (whether the time window algorithm is utilized or not 
 2. Forward sea-level algorithm: Gomez et al., 2010. A new projection of sea level change in response to collapse of marinesectors of the Antarctic Ice Sheet, Geophysical Journal International (GJI). https://doi.org/10.1111/j.1365-246X.2009.04419.x
 
 3. Ice-age sea-level algorithm: Kendall et al., 2005. On post-glacial sea level II. Numerical formulation and comparative results on spherically symmetric models, Geophysical Journal International (GJI). https://doi.org/10.1111/j.1365-246X.2005.02553.x
+
+
+## Backend Build Options
+
+The spherical harmonic transform path can be selected at build time.
+
+- Default (legacy spharmt path):
+
+```bash
+make clean
+make
+```
+
+- SHTns path (native Fortran interface):
+
+```bash
+make clean
+make SH_BACKEND=shtns SHTNS_INCLUDES="-I/path/to/shtns/include" SHTNS_LIBDIR="-L/path/to/shtns/lib"
+```
+
+Notes:
+
+- The SHTns backend expects the Fortran include file `shtns.f` to be reachable through `SHTNS_INCLUDES`.
+- The default SHTns link list is `-lshtns -lfftw3` and can be overridden with `SHTNS_LIBS="..."`.
+- If `SH_BACKEND=shtns` is selected without valid SHTns include/lib paths, compilation will fail.

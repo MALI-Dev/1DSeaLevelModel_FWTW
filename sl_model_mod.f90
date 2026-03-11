@@ -2,7 +2,7 @@
 !_______________________________________________________________________________________________________________________!
 module sl_model_mod
 
-   use sh_transform_adapter, only: sh_transform, sh_init, sh_spat2spec, sh_spec2spat
+   use sh_transform_adapter, only: sh_transform, sh_init, sh_destroy, sh_spat2spec, sh_spec2spat
    use user_specs_mod
    use planets_mod
    use sl_io_mod
@@ -480,6 +480,8 @@ module sl_model_mod
 
    !=======================================================================================================================!
    subroutine sl_deallocate_array
+
+      call sh_destroy(spheredat)
 
       deallocate(mask, iceload, icefiles, TIMEWINDOW)
       deallocate(times, lovebetatt, lovebetattrr)

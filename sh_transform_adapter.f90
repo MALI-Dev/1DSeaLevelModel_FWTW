@@ -5,6 +5,10 @@ module sh_transform_adapter
                       spharmt_destroy_impl => spharmt_destroy, &
                       spat2spec_impl => spat2spec, &
                       spec2spat_impl => spec2spat
+#ifdef USE_SHTNS_BACKEND
+   use sh_shtns_backend, only: sh_shtns_state, sh_shtns_init, sh_shtns_destroy, &
+                               sh_shtns_spat2spec, sh_shtns_spec2spat
+#endif
 
    implicit none
    private
@@ -21,6 +25,9 @@ module sh_transform_adapter
    type, public :: sh_transform
       integer :: backend = DEFAULT_SH_BACKEND
       type(sphere_spharmt) :: spharmt_state
+#ifdef USE_SHTNS_BACKEND
+      type(sh_shtns_state) :: shtns_state
+#endif
    end type sh_transform
 
    public :: sh_set_backend
@@ -54,8 +61,12 @@ contains
       case (SH_BACKEND_SPHARMT)
          call spharmt_init_impl(handle%spharmt_state, nlon, nlat, ntrunc, re)
       case (SH_BACKEND_SHTNS)
-         write(*,*) 'SHTns backend is selected but not implemented yet in sh_transform_adapter.'
+#ifdef USE_SHTNS_BACKEND
+         call sh_shtns_init(handle%shtns_state, nlon, nlat, ntrunc)
+#else
+         write(*,*) 'SHTns backend selected, but this build was compiled without USE_SHTNS_BACKEND.'
          stop
+#endif
       end select
 
    end subroutine sh_init
@@ -69,7 +80,9 @@ contains
       case (SH_BACKEND_SPHARMT)
          call spharmt_destroy_impl(handle%spharmt_state)
       case (SH_BACKEND_SHTNS)
-         ! Placeholder for future SHTns teardown.
+#ifdef USE_SHTNS_BACKEND
+         call sh_shtns_destroy(handle%shtns_state)
+#endif
       end select
 
    end subroutine sh_destroy
@@ -85,8 +98,12 @@ contains
       case (SH_BACKEND_SPHARMT)
          call spat2spec_impl(z, u, handle%spharmt_state)
       case (SH_BACKEND_SHTNS)
-         write(*,*) 'SHTns backend is selected but sh_spat2spec is not implemented yet.'
+#ifdef USE_SHTNS_BACKEND
+         call sh_shtns_spat2spec(z, u, handle%shtns_state)
+#else
+         write(*,*) 'SHTns backend selected, but this build was compiled without USE_SHTNS_BACKEND.'
          stop
+#endif
       end select
 
    end subroutine sh_spat2spec
@@ -102,8 +119,12 @@ contains
       case (SH_BACKEND_SPHARMT)
          call spec2spat_impl(z, u, handle%spharmt_state)
       case (SH_BACKEND_SHTNS)
-         write(*,*) 'SHTns backend is selected but sh_spec2spat is not implemented yet.'
+#ifdef USE_SHTNS_BACKEND
+         call sh_shtns_spec2spat(z, u, handle%shtns_state)
+#else
+         write(*,*) 'SHTns backend selected, but this build was compiled without USE_SHTNS_BACKEND.'
          stop
+#endif
       end select
 
    end subroutine sh_spec2spat

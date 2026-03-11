@@ -28,14 +28,15 @@ SHTNS_INCLUDES ?=
 SHTNS_LIBDIR ?=
 SHTNS_LIBS ?= -lshtns -lfftw3
 
-ADAPTER_CPPFLAGS =
+CPPFLAGS += -cpp
+SH_BACKEND_OBJS =
 ifeq ($(SH_BACKEND),shtns)
-        ADAPTER_CPPFLAGS += -DUSE_SHTNS_BACKEND
+        CPPFLAGS += -DUSE_SHTNS_BACKEND
+        SH_BACKEND_OBJS += sh_shtns_backend.o
 endif
 
 
 CPP = cpp -P -traditional
-CPPFLAGS = 
 CPPINCLUDES = 
 INCLUDES = -I$(NETCDF)/include -I.
 
@@ -69,6 +70,7 @@ RM = rm -f
 OBJS = sl_model_driver.o \
        sl_model_mod.o \
         sh_transform_adapter.o \
+        $(SH_BACKEND_OBJS) \
        spharmt.o \
        user_specs_mod.o\
        sl_init_mod.o
@@ -81,13 +83,13 @@ slmodel.exe: $(OBJS)
 sl_model_driver.o: sl_model_mod.o
 sl_model_mod.o: sh_transform_adapter.o user_specs_mod.o sl_init_mod.o
 sh_transform_adapter.o: spharmt.o
-
-sh_transform_adapter.o : sh_transform_adapter.f90
-	$(FC) $(FFLAGS) -cpp $(ADAPTER_CPPFLAGS) -c $< $(INCLUDES)
+ifeq ($(SH_BACKEND),shtns)
+sh_transform_adapter.o: sh_shtns_backend.o
+endif
 
 clean:
 	$(RM) *.o *.mod slmodel.exe
 
 %.o : %.f90
-	$(FC)  $(FFLAGS) -c  $< $(INCLUDES)
+	$(FC) $(FFLAGS) $(CPPFLAGS) -c $< $(INCLUDES)
 
