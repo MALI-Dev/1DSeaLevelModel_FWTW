@@ -56,3 +56,32 @@ Notes:
 - The SHTns backend expects the Fortran include file `shtns.f` to be reachable through `SHTNS_INCLUDES`.
 - The default SHTns link list is `-lshtns -lfftw3` and can be overridden with `SHTNS_LIBS="..."`.
 - If `SH_BACKEND=shtns` is selected without valid SHTns include/lib paths, compilation will fail.
+
+
+## Simple Backend Comparison Test (No Love Numbers Needed)
+
+If you want to validate transform behavior before running the full sea-level model,
+you can run the standalone transform-only test program. This does not require any
+Love-number inputs.
+
+```bash
+make clean
+make shtns-build-local
+make SH_BACKEND=shtns sh-backend-test
+./sh_backend_test.exe
+```
+
+What it does:
+
+- Builds a smooth synthetic spatial field on a small lat-lon grid.
+- Runs spatial-to-spectral and spectral-to-spatial with both backends.
+- Reports:
+	- relative spectral difference (SHTns vs spharmt)
+	- relative spatial difference after synthesis
+	- round-trip relative error for each backend
+
+Interpretation:
+
+- Round-trip errors should be small for both backends.
+- Backend-to-backend differences should be small and stable; if not, this usually
+	indicates normalization or indexing mismatch to tune in the SHTns adapter.

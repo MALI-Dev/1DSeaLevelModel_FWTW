@@ -69,7 +69,7 @@ RM = rm -f
 ##########################
 
 .SUFFIXES: .f90 .o
-.PHONY: fftw-build shtns-build shtns-build-local
+.PHONY: fftw-build shtns-build shtns-build-local sh-backend-test
 
 
 OBJS = sl_model_driver.o \
@@ -81,6 +81,11 @@ OBJS = sl_model_driver.o \
        sl_init_mod.o
 
 all: slmodel.exe
+
+sh-backend-test: sh_backend_test.exe
+
+sh_backend_test.exe: test_sh_backends.o sh_transform_adapter.o spharmt.o sh_shtns_backend.o
+	$(FC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 fftw-build:
 	cd $(FFTW_ROOT) && sh bootstrap.sh && ./configure --prefix=$(FFTW_PREFIX) --enable-shared --disable-static && make && make install
