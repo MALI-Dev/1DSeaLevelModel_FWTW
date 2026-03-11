@@ -18,6 +18,11 @@ program test_sh_backends
    real :: rel_rt_spharmt, rel_rt_ducc
    real :: t0, t1
    real :: tcur
+   real :: t_total_start, t_total_end
+   real :: t_gridgen
+   real :: t_init_spharmt, t_init_ducc
+   real :: t_warmup
+   real :: t_bench_total
    real :: t_spat2spec_spharmt, t_spat2spec_ducc
    real :: t_spec2spat_spharmt, t_spec2spat_ducc
    real :: ratio_spat2spec, ratio_spec2spat
@@ -31,8 +36,11 @@ program test_sh_backends
    allocate(z(nlat, nlon), z_spharmt(nlat, nlon), z_ducc(nlat, nlon))
    allocate(u_spharmt(0:ntrunc,0:ntrunc), u_ducc(0:ntrunc,0:ntrunc))
 
+   call cpu_time(t_total_start)
+
    pi = acos(-1.0)
 
+   call cpu_time(t0)
    do j = 1, nlon
       phi = 2.0*pi*real(j-1)/real(nlon)
       do i = 1, nlat
@@ -40,14 +48,28 @@ program test_sh_backends
          z(i,j) = 0.8*sin(theta)*cos(2.0*phi) + 0.4*cos(3.0*theta) + 0.2*sin(2.0*theta + phi)
       enddo
    enddo
+   call cpu_time(t1)
+   t_gridgen = t1 - t0
 
+   call cpu_time(t0)
    call sh_initialize(sh_spharmt, 'spharmt', nlon, nlat, ntrunc, radius, 6)
-   call sh_initialize(sh_ducc, 'ducc', nlon, nlat, ntrunc, radius, 6)
+   call cpu_time(t1)
+   t_init_spharmt = t1 - t0
 
+   call cpu_time(t0)
+   call sh_initialize(sh_ducc, 'ducc', nlon, nlat, ntrunc, radius, 6)
+   call cpu_time(t1)
+   t_init_ducc = t1 - t0
+
+   call cpu_time(t0)
    call sh_spat2spec(z, u_spharmt, sh_spharmt)
    call sh_spat2spec(z, u_ducc, sh_ducc)
    call sh_spec2spat(z_spharmt, u_spharmt, sh_spharmt)
    call sh_spec2spat(z_ducc, u_ducc, sh_ducc)
+   call cpu_time(t1)
+   t_warmup = t1 - t0
+
+   call cpu_time(t0)
 
    t_spat2spec_spharmt = huge(1.0)
    t_spat2spec_ducc = huge(1.0)
@@ -80,6 +102,9 @@ program test_sh_backends
       t_spec2spat_ducc = min(t_spec2spat_ducc, tcur)
    enddo
 
+   call cpu_time(t1)
+   t_bench_total = t1 - t0
+
    rel_spec_diff = l2_rel_complex(u_ducc, u_spharmt)
    rel_spat_diff = l2_rel_real(z_ducc, z_spharmt)
    rel_rt_spharmt = l2_rel_real(z_spharmt, z)
@@ -108,6 +133,15 @@ program test_sh_backends
    write(*,'(A,ES10.3E2,A,L1)') 'DUCC round-trip target <= ', rtol_target, ': ', rt_ok
    write(*,'(A,ES10.3E2,A,L1)') 'DUCC forward speed target >= ', speed_target, ': ', spd_fwd_ok
    write(*,'(A,ES10.3E2,A,L1)') 'DUCC inverse speed target >= ', speed_target, ': ', spd_inv_ok
+
+   call cpu_time(t_total_end)
+   write(*,'(A)') '--- Overhead Breakdown (cpu_time, seconds) ---'
+   write(*,'(A,ES12.4E2)') 'grid generation: ', t_gridgen
+   write(*,'(A,ES12.4E2)') 'init spharmt:    ', t_init_spharmt
+   write(*,'(A,ES12.4E2)') 'init ducc:       ', t_init_ducc
+   write(*,'(A,ES12.4E2)') 'warmup transforms: ', t_warmup
+   write(*,'(A,ES12.4E2)') 'benchmark section total: ', t_bench_total
+   write(*,'(A,ES12.4E2)') 'program total cpu_time: ', t_total_end - t_total_start
 
    call sh_destroy(sh_spharmt)
    call sh_destroy(sh_ducc)
