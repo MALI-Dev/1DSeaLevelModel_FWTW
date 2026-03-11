@@ -9,7 +9,7 @@ module shtns_backend_mod
    integer(c_int), parameter :: SHT_GAUSS = 0
    integer(c_int), parameter :: SHT_ORTHONORMAL = 0
    integer(c_int), parameter :: SHT_REAL_NORM = 2048
-   integer(c_int), parameter :: SHT_PHI_CONTIGUOUS = 512
+   integer(c_int), parameter :: SHT_THETA_CONTIGUOUS = 256
    integer(c_int), parameter :: SHT_SCALAR_ONLY = 4096
 
    type :: shtns_state
@@ -20,7 +20,8 @@ module shtns_backend_mod
       integer :: nlm = 0
       logical :: initialized = .false.
       complex(c_double_complex), allocatable :: qlm(:)
-      real(c_double), allocatable :: spat_phi_lat(:,:)
+      real(c_double), allocatable :: spat_theta_phi(:,:)
+      integer, allocatable :: lm_map(:,:)
    end type shtns_state
 
    public :: shtns_state
@@ -88,7 +89,8 @@ contains
    subroutine shtns_init(state, nlon, nlat, ntrunc)
       type(shtns_state), intent(inout) :: state
       integer, intent(in) :: nlon, nlat, ntrunc
-      integer(c_int) :: norm, layout
+      integer(c_int) :: norm, layout, l_c, m_c
+      integer :: l, m, lm
       real(c_double) :: eps_polar
 
       call shtns_destroy(state)
@@ -100,7 +102,7 @@ contains
          stop
       endif
 
-      layout = SHT_GAUSS + SHT_PHI_CONTIGUOUS + SHT_SCALAR_ONLY
+      layout = SHT_GAUSS + SHT_THETA_CONTIGUOUS + SHT_SCALAR_ONLY
       eps_polar = 1.0d-10
       call shtns_set_grid_c(state%cfg, layout, eps_polar, int(nlat, c_int), int(nlon, c_int))
 
@@ -110,9 +112,23 @@ contains
       state%ntrunc = ntrunc
 
       allocate(state%qlm(state%nlm))
-      allocate(state%spat_phi_lat(state%nphi, state%nlat))
+      allocate(state%spat_theta_phi(state%nlat, state%nphi))
+      allocate(state%lm_map(0:state%ntrunc,0:state%ntrunc))
       state%qlm = (0.0d0, 0.0d0)
-      state%spat_phi_lat = 0.0d0
+      state%spat_theta_phi = 0.0d0
+      state%lm_map = 0
+      do m = 0, state%ntrunc
+         do l = m, state%ntrunc
+            l_c = int(l, c_int)
+            m_c = int(m, c_int)
+            lm = int(shtns_lmidx_c(state%cfg, l_c, m_c))
+            if (lm < 1 .or. lm > state%nlm) then
+               write(*,*) 'SHTns lm index out of bounds in init: l,m,lm,nlm=', l, m, lm, state%nlm
+               stop
+            endif
+            state%lm_map(l,m) = lm
+         enddo
+      enddo
       state%initialized = .true.
    end subroutine shtns_init
 
@@ -138,8 +154,11 @@ contains
       if (allocated(state%qlm)) then
          deallocate(state%qlm)
       endif
-      if (allocated(state%spat_phi_lat)) then
-         deallocate(state%spat_phi_lat)
+      if (allocated(state%spat_theta_phi)) then
+         deallocate(state%spat_theta_phi)
+      endif
+      if (allocated(state%lm_map)) then
+         deallocate(state%lm_map)
       endif
 
       if (c_associated(state%cfg)) then
@@ -160,8 +179,7 @@ contains
       type(shtns_state), intent(inout) :: state
       real, intent(in) :: z_lat_phi(:,:)
       complex, intent(out) :: u_l_m(0:,0:)
-      integer :: it, ip, l, m, lm
-      integer(c_int) :: lm_c, l_c, m_c
+      integer :: l, m, lm
 
       if (.not. state%initialized) then
          write(*,*) 'SHTns backend not initialized before shtns_spat2spec.'
@@ -172,23 +190,16 @@ contains
          stop
       endif
 
-      do ip = 1, state%nphi
-         do it = 1, state%nlat
-            state%spat_phi_lat(ip,it) = real(z_lat_phi(it,ip), c_double)
-         enddo
-      enddo
+      state%spat_theta_phi = real(z_lat_phi, c_double)
 
-      call spat_to_sh_c(state%cfg, state%spat_phi_lat, state%qlm)
+      call spat_to_sh_c(state%cfg, state%spat_theta_phi, state%qlm)
 
       u_l_m = (0.0, 0.0)
       do m = 0, state%ntrunc
          do l = m, state%ntrunc
-            l_c = int(l, c_int)
-            m_c = int(m, c_int)
-            lm_c = shtns_lmidx_c(state%cfg, l_c, m_c)
-            lm = int(lm_c)
-            if (lm < 1 .or. lm > state%nlm) then
-               write(*,*) 'SHTns lm index out of bounds in spat2spec: l,m,lm,nlm=', l, m, lm, state%nlm
+            lm = state%lm_map(l,m)
+            if (lm <= 0) then
+               write(*,*) 'SHTns lm map unset in spat2spec: l,m=', l, m
                stop
             endif
             u_l_m(l,m) = cmplx(real(state%qlm(lm), c_double), aimag(state%qlm(lm)), kind=kind(u_l_m)) / sh_norm
@@ -201,8 +212,7 @@ contains
       type(shtns_state), intent(inout) :: state
       real, intent(out) :: z_lat_phi(:,:)
       complex, intent(in) :: u_l_m(0:,0:)
-      integer :: it, ip, l, m, lm
-      integer(c_int) :: lm_c, l_c, m_c
+      integer :: l, m, lm
 
       if (.not. state%initialized) then
          write(*,*) 'SHTns backend not initialized before shtns_spec2spat.'
@@ -216,25 +226,18 @@ contains
       state%qlm = (0.0d0, 0.0d0)
       do m = 0, state%ntrunc
          do l = m, state%ntrunc
-            l_c = int(l, c_int)
-            m_c = int(m, c_int)
-            lm_c = shtns_lmidx_c(state%cfg, l_c, m_c)
-            lm = int(lm_c)
-            if (lm < 1 .or. lm > state%nlm) then
-               write(*,*) 'SHTns lm index out of bounds in spec2spat: l,m,lm,nlm=', l, m, lm, state%nlm
+            lm = state%lm_map(l,m)
+            if (lm <= 0) then
+               write(*,*) 'SHTns lm map unset in spec2spat: l,m=', l, m
                stop
             endif
             state%qlm(lm) = cmplx(real(u_l_m(l,m), c_double), aimag(u_l_m(l,m)), kind=kind(state%qlm)) * sh_norm
          enddo
       enddo
 
-         call sh_to_spat_c(state%cfg, state%qlm, state%spat_phi_lat)
+      call sh_to_spat_c(state%cfg, state%qlm, state%spat_theta_phi)
 
-      do ip = 1, state%nphi
-         do it = 1, state%nlat
-            z_lat_phi(it,ip) = real(state%spat_phi_lat(ip,it), kind(z_lat_phi))
-         enddo
-      enddo
+      z_lat_phi = real(state%spat_theta_phi, kind(z_lat_phi))
    end subroutine shtns_spec2spat
 
 end module shtns_backend_mod
