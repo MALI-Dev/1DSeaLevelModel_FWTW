@@ -37,10 +37,22 @@ make shtns-build-local
 make SH_BACKEND=shtns
 ```
 
+- SHTns path using FFTW submodule source-generator tree (optional):
+
+```bash
+make clean
+make FFTW_SOURCE=submodule fftw-build
+make shtns-build
+make SH_BACKEND=shtns
+```
+
 By default, the root Makefile expects FFTW and SHTns as submodules and uses:
 
 - `FFTW_ROOT=external/fftw`
 - `FFTW_PREFIX=<repo>/external/fftw/install`
+- `FFTW_SOURCE=tarball` (default) or `FFTW_SOURCE=submodule`
+- `FFTW_VERSION=3.3.10`
+- `FFTW_TARBALL_URL=https://www.fftw.org/fftw-$(FFTW_VERSION).tar.gz`
 
 - `SHTNS_ROOT=external/shtns`
 - `SHTNS_PREFIX=<repo>/external/shtns/install`
@@ -52,6 +64,8 @@ You can still override these variables if SHTns is installed elsewhere.
 Notes:
 
 - The selected FFTW repository is a source-generator tree. Building from that repo requires running `bootstrap.sh` and therefore additional build tools (e.g., autoconf/automake/libtool and OCaml tooling) before `configure` and `make`.
+- The default mode `FFTW_SOURCE=tarball` uses the official FFTW source release tarball.
+- Set `FFTW_SOURCE=submodule` only if you explicitly want to build from the FFTW submodule source-generator tree.
 - The `fftw-build` helper runs `make MAKEINFO=true` so a missing Texinfo `makeinfo` executable does not block the FFTW build.
 - The helper target `make shtns-build-local` builds and installs FFTW first, then configures and builds SHTns against that local FFTW install.
 - The SHTns backend expects the Fortran include file `shtns.f` to be reachable through `SHTNS_INCLUDES`.

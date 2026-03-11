@@ -24,8 +24,13 @@ FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian 
 LDFLAGS = -O3 -m64
 
 SH_BACKEND ?= spharmt
+FFTW_SOURCE ?= tarball
 FFTW_ROOT ?= external/fftw
 FFTW_PREFIX ?= $(CURDIR)/external/fftw/install
+FFTW_VERSION ?= 3.3.10
+FFTW_TARBALL_URL ?= https://www.fftw.org/fftw-$(FFTW_VERSION).tar.gz
+FFTW_TARBALL ?= $(CURDIR)/external/fftw-$(FFTW_VERSION).tar.gz
+FFTW_TARBALL_SRC ?= $(CURDIR)/external/fftw-$(FFTW_VERSION)
 SHTNS_ROOT ?= external/shtns
 SHTNS_PREFIX ?= $(CURDIR)/external/shtns/install
 SHTNS_INCLUDES ?= -I$(SHTNS_PREFIX)/include
@@ -88,7 +93,25 @@ sh_backend_test.exe: test_sh_backends.o sh_transform_adapter.o spharmt.o sh_shtn
 	$(FC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 fftw-build:
-	cd $(FFTW_ROOT) && sh bootstrap.sh && ./configure --prefix=$(FFTW_PREFIX) --enable-shared --disable-static && make MAKEINFO=true && make MAKEINFO=true install
+	@if [ "$(FFTW_SOURCE)" = "tarball" ]; then \
+          mkdir -p "$(CURDIR)/external"; \
+          if [ ! -f "$(FFTW_TARBALL)" ]; then \
+            if command -v curl >/dev/null 2>&1; then \
+              curl -L "$(FFTW_TARBALL_URL)" -o "$(FFTW_TARBALL)"; \
+            elif command -v wget >/dev/null 2>&1; then \
+              wget -O "$(FFTW_TARBALL)" "$(FFTW_TARBALL_URL)"; \
+            else \
+              echo "Need curl or wget to download FFTW tarball."; \
+              exit 1; \
+            fi; \
+          fi; \
+          rm -rf "$(FFTW_TARBALL_SRC)"; \
+          tar -xzf "$(FFTW_TARBALL)" -C "$(CURDIR)/external"; \
+          cd "$(FFTW_TARBALL_SRC)" && ./configure --prefix="$(FFTW_PREFIX)" --enable-shared --disable-static; \
+          cd "$(FFTW_TARBALL_SRC)" && make MAKEINFO=true && make MAKEINFO=true install; \
+        else \
+          cd "$(FFTW_ROOT)" && sh bootstrap.sh && ./configure --prefix="$(FFTW_PREFIX)" --enable-shared --disable-static && make MAKEINFO=true && make MAKEINFO=true install; \
+        fi
 
 shtns-build:
 	cd $(SHTNS_ROOT) && ./configure --prefix=$(SHTNS_PREFIX) CPPFLAGS="-I$(FFTW_PREFIX)/include" LDFLAGS="-L$(FFTW_PREFIX)/lib" LIBS="-lfftw3" && make && make install
