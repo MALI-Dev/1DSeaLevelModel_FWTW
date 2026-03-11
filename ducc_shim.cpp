@@ -34,8 +34,10 @@ std::array<std::size_t, 3> map_shape(const DuccPlan &p)
 
 std::size_t alm_extent(const DuccPlan &p)
 {
-    const std::size_t n = static_cast<std::size_t>(p.ntrunc + 1);
-    return n * (n + 1) / 2;
+    // DUCC interprets mstart as the hypothetical index for l=0,m.
+    // Valid coefficients use indices mstart[m] + l (for l=m..lmax),
+    // so the storage must reach mstart[mmax] + lmax.
+    return p.mstart.back() + static_cast<std::size_t>(p.ntrunc) + 1u;
 }
 
 } // namespace

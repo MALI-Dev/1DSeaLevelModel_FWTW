@@ -77,29 +77,35 @@ contains
       real(c_double), allocatable :: zbuf(:)
       complex(c_double_complex), allocatable :: ubuf(:)
       integer :: nlat, nlon, ntrunc
-      integer :: m, n, idx, nspec
+      integer :: m, n, idx, nalm
+      integer, allocatable :: mstart(:)
 
       nlat = size(z, 1)
       nlon = size(z, 2)
       ntrunc = size(u, 1) - 1
-      nspec = (ntrunc+1)*(ntrunc+2)/2
+      allocate(mstart(0:ntrunc))
+      idx = 0
+      do m = 0, ntrunc
+         mstart(m) = idx
+         idx = idx + (ntrunc + 1 - m)
+      enddo
+      nalm = mstart(ntrunc) + ntrunc + 1
 
       allocate(zbuf(nlat*nlon))
-      allocate(ubuf(nspec))
+      allocate(ubuf(nalm))
 
       zbuf = reshape(real(z, c_double), (/nlat*nlon/))
       call ducc_sh_spat2spec_c(plan, zbuf, ubuf, int(nlat, c_int), int(nlon, c_int), int(ntrunc, c_int))
 
       u = (0.0, 0.0)
-      idx = 1
       do m = 0, ntrunc
          do n = m, ntrunc
+            idx = mstart(m) + n + 1
             u(n,m) = cmplx(real(ubuf(idx)), aimag(ubuf(idx)), kind=kind(u(0,0))) / sh_norm
-            idx = idx + 1
          enddo
       enddo
 
-      deallocate(zbuf, ubuf)
+      deallocate(zbuf, ubuf, mstart)
    end subroutine ducc_spat2spec
 
 
@@ -110,28 +116,36 @@ contains
       real(c_double), allocatable :: zbuf(:)
       complex(c_double_complex), allocatable :: ubuf(:)
       integer :: nlat, nlon, ntrunc
-      integer :: m, n, idx, nspec
+      integer :: m, n, idx, nalm
+      integer, allocatable :: mstart(:)
 
       nlat = size(z, 1)
       nlon = size(z, 2)
       ntrunc = size(u, 1) - 1
-      nspec = (ntrunc+1)*(ntrunc+2)/2
+      allocate(mstart(0:ntrunc))
+      idx = 0
+      do m = 0, ntrunc
+         mstart(m) = idx
+         idx = idx + (ntrunc + 1 - m)
+      enddo
+      nalm = mstart(ntrunc) + ntrunc + 1
 
       allocate(zbuf(nlat*nlon))
-      allocate(ubuf(nspec))
+      allocate(ubuf(nalm))
 
-      idx = 1
+      ubuf = (0.0d0, 0.0d0)
+
       do m = 0, ntrunc
          do n = m, ntrunc
+            idx = mstart(m) + n + 1
             ubuf(idx) = cmplx(real(u(n,m), c_double), aimag(u(n,m)), kind=kind(ubuf)) * sh_norm
-            idx = idx + 1
          enddo
       enddo
 
       call ducc_sh_spec2spat_c(plan, zbuf, ubuf, int(nlat, c_int), int(nlon, c_int), int(ntrunc, c_int))
       z = reshape(real(zbuf, kind(z)), shape(z))
 
-      deallocate(zbuf, ubuf)
+      deallocate(zbuf, ubuf, mstart)
    end subroutine ducc_spec2spat
 
 end module ducc_backend_mod
