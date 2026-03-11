@@ -31,11 +31,11 @@ program test_sh_backends
 
    type(sh_state) :: sh_spharmt, sh_other
    real, allocatable, dimension(:,:) :: z
-   real, allocatable, dimension(:,:) :: z_spharmt, z_ducc
-   complex, allocatable, dimension(:,:) :: u_spharmt, u_ducc
+   real, allocatable, dimension(:,:) :: z_spharmt, z_other
+   complex, allocatable, dimension(:,:) :: u_spharmt, u_other
 
-   allocate(z(nlat, nlon), z_spharmt(nlat, nlon), z_ducc(nlat, nlon))
-   allocate(u_spharmt(0:ntrunc,0:ntrunc), u_ducc(0:ntrunc,0:ntrunc))
+   allocate(z(nlat, nlon), z_spharmt(nlat, nlon), z_other(nlat, nlon))
+   allocate(u_spharmt(0:ntrunc,0:ntrunc), u_other(0:ntrunc,0:ntrunc))
 
    call cpu_time(t_total_start)
 
@@ -74,9 +74,9 @@ program test_sh_backends
 
    call cpu_time(t0)
    call sh_spat2spec(z, u_spharmt, sh_spharmt)
-   call sh_spat2spec(z, u_ducc, sh_other)
+   call sh_spat2spec(z, u_other, sh_other)
    call sh_spec2spat(z_spharmt, u_spharmt, sh_spharmt)
-   call sh_spec2spat(z_ducc, u_ducc, sh_other)
+   call sh_spec2spat(z_other, u_other, sh_other)
    call cpu_time(t1)
    t_warmup = t1 - t0
 
@@ -95,7 +95,7 @@ program test_sh_backends
       t_spat2spec_spharmt = min(t_spat2spec_spharmt, tcur)
 
       call cpu_time(t0)
-      call sh_spat2spec(z, u_ducc, sh_other)
+      call sh_spat2spec(z, u_other, sh_other)
       call cpu_time(t1)
       tcur = t1 - t0
       t_spat2spec_other = min(t_spat2spec_other, tcur)
@@ -107,7 +107,7 @@ program test_sh_backends
       t_spec2spat_spharmt = min(t_spec2spat_spharmt, tcur)
 
       call cpu_time(t0)
-      call sh_spec2spat(z_ducc, u_ducc, sh_other)
+      call sh_spec2spat(z_other, u_other, sh_other)
       call cpu_time(t1)
       tcur = t1 - t0
       t_spec2spat_other = min(t_spec2spat_other, tcur)
@@ -116,10 +116,10 @@ program test_sh_backends
    call cpu_time(t1)
    t_bench_total = t1 - t0
 
-   rel_spec_diff = l2_rel_complex(u_ducc, u_spharmt)
-   rel_spat_diff = l2_rel_real(z_ducc, z_spharmt)
+   rel_spec_diff = l2_rel_complex(u_other, u_spharmt)
+   rel_spat_diff = l2_rel_real(z_other, z_spharmt)
    rel_rt_spharmt = l2_rel_real(z_spharmt, z)
-   rel_rt_other = l2_rel_real(z_ducc, z)
+   rel_rt_other = l2_rel_real(z_other, z)
 
    ratio_spat2spec = safe_ratio(t_spat2spec_spharmt, t_spat2spec_other)
    ratio_spec2spat = safe_ratio(t_spec2spat_spharmt, t_spec2spat_other)
@@ -158,7 +158,7 @@ program test_sh_backends
    call sh_destroy(sh_spharmt)
    call sh_destroy(sh_other)
 
-   deallocate(z, z_spharmt, z_ducc, u_spharmt, u_ducc)
+   deallocate(z, z_spharmt, z_other, u_spharmt, u_other)
 
 contains
 

@@ -142,6 +142,10 @@ The test reports:
 - `cpu_time` timings and speedup ratios for `spat2spec` and `spec2spat`
 - Overhead breakdown (`grid generation`, per-backend init, warmup, benchmark total)
 
+Interpretation note:
+- Spectral coefficients can differ across backends because of normalization/phase/indexing conventions.
+- Use round-trip relative error and synthesized spatial difference as the primary correctness checks.
+
 ### DUCC Performance Defaults and Tuning
 
 Current default plan prioritizes DUCC throughput while preserving a fallback:
