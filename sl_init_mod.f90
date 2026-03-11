@@ -350,7 +350,7 @@ module sl_io_mod
                         initial_topo, iceVolume, coupling, &
                         patch_ice, L_sim, dt1, dt2, &
                         dt3, dt4, Ldt1, Ldt2, &
-                        Ldt3, Ldt4, whichplanet)
+                        Ldt3, Ldt4, whichplanet, sh_backend)
 
       character(str_len), intent(out) :: inputfolder_ice
       character(str_len), intent(out) :: inputfolder
@@ -363,6 +363,7 @@ module sl_io_mod
       character(4), intent(out) :: ext
       character(6), intent(out) :: fType_in
       character(6), intent(out) :: fType_out
+      character(16), intent(out) :: sh_backend
 
       character(str_len), intent(out) :: planetmodel
       character(str_len), intent(out) :: icemodel
@@ -413,7 +414,7 @@ module sl_io_mod
                                    dt4, Ldt1, Ldt2, Ldt3, &
                                    Ldt4
 
-      namelist /others/ whichplanet
+      namelist /others/ whichplanet, sh_backend
 
       open(201, file='namelist.sealevel', status='old', form='formatted')
       read(201, io_directory)

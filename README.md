@@ -16,3 +16,31 @@ To the users of this code (whether the time window algorithm is utilized or not 
 2. Forward sea-level algorithm: Gomez et al., 2010. A new projection of sea level change in response to collapse of marinesectors of the Antarctic Ice Sheet, Geophysical Journal International (GJI). https://doi.org/10.1111/j.1365-246X.2009.04419.x
 
 3. Ice-age sea-level algorithm: Kendall et al., 2005. On post-glacial sea level II. Numerical formulation and comparative results on spherically symmetric models, Geophysical Journal International (GJI). https://doi.org/10.1111/j.1365-246X.2005.02553.x
+
+
+## Spherical Harmonic Backends
+
+The model now supports runtime selection of spherical harmonic backend through the namelist option `sh_backend` in the `&others` group.
+
+- `spharmt`: default pure Fortran backend.
+- `ducc`: optional DUCC backend (must be compiled in).
+
+If `sh_backend='ducc'` is requested in a binary built without DUCC support, the model terminates with a clear error.
+
+### Build without DUCC (default)
+
+```bash
+make clean
+make
+```
+
+### Build with DUCC enabled
+
+```bash
+make clean
+make USE_DUCC=1 DUCC_INCLUDE=/path/to/ducc/include DUCC_LIBS="-L/path/to/lib -lducc_shim -lducc0"
+```
+
+Notes:
+- `DUCC_LIBS` should include the C-ABI shim library providing `ducc_sh_init`, `ducc_sh_destroy`, `ducc_sh_spat2spec`, and `ducc_sh_spec2spat`.
+- The Makefile adds `-lstdc++` automatically when `USE_DUCC=1`.

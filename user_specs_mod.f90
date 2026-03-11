@@ -92,6 +92,7 @@ module user_specs_mod
    ! ... and their file type:
    character(6) :: fType_in  = 'text'  ! 'netcdf' | 'text'
    character(6) :: fType_out = 'text'  ! 'netcdf' | 'text' | 'both' for both netcdf and text format
+   character(16) :: sh_backend = 'spharmt' ! 'spharmt' | 'ducc'
    
    ! Various selection ================================================================================================!
    character(5)  :: whichplanet   = 'earth'                    ! e.g. 'earth', 'Mars', etc.

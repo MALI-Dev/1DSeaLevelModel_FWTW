@@ -61,6 +61,7 @@
 /
 &others
     whichplanet = 'earth'
+    sh_backend = 'spharmt'
 
 
 /

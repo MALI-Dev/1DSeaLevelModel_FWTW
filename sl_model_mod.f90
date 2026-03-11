@@ -2,7 +2,7 @@
 !_______________________________________________________________________________________________________________________!
 module sl_model_mod
 
-   use spharmt
+   use sh_backend_mod
    use user_specs_mod
    use planets_mod
    use sl_io_mod
@@ -111,7 +111,7 @@ module sl_model_mod
    character(6) :: numstr, numstr2                             ! String for timestep number for reading/writing files
    integer :: counti, countf,countrate                         ! Computation timing
    real :: counti_cpu, countf_cpu
-   type(sphere) :: spheredat                                   ! SH transform data to be passed to subroutines
+   type(sh_state) :: spheredat                                 ! SH backend state passed to transform dispatch
 
    ! For Jerry's code to read in Love numbers
    integer, dimension(:), allocatable :: legord,nmod,nmodes
@@ -164,7 +164,7 @@ module sl_model_mod
                         topomodel, topo_initial, grid_lat, grid_lon, &
                         checkmarine, tpw, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, patch_ice, &
-                        L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet)
+                        L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet, sh_backend)
 
       call sl_get_model_res(norder, nglv)
 
@@ -481,6 +481,8 @@ module sl_model_mod
    !=======================================================================================================================!
    subroutine sl_deallocate_array
 
+      call sh_destroy(spheredat)
+
       deallocate(mask, iceload, icefiles, TIMEWINDOW)
       deallocate(times, lovebetatt, lovebetattrr)
       deallocate(lovebetarr, lovebeta)
@@ -547,7 +549,8 @@ module sl_model_mod
       call set_planet
 
       ! initalize spherical harmonics
-      call spharmt_init(spheredat, 2*nglv, nglv, norder, radius) ! Initialize spheredat (for SH transform subroutines)
+      call sh_initialize(spheredat, sh_backend, 2*nglv, nglv, norder, radius, unit_num)
+      write(unit_num,*) 'Spherical harmonic backend: ', trim(sh_backend)
 
    end subroutine sl_solver_checkpoint
    !_______________________________________________________________________________________________________________________!
@@ -669,7 +672,7 @@ module sl_model_mod
       call write_sl(cxy0(:,:), 'ocean', outputfolder, suffix=numstr)
 
       ! write out the ocean area
-      call spat2spec(cxy0, clm, spheredat)
+      call sh_spat2spec(cxy0, clm, spheredat)
       open(unit = 201, file = trim(outputfolder)//'ocean_area', form = 'formatted', access ='sequential', &
       & status = 'replace')
       write(201,'(ES14.4E2)') real(clm(0,0))*4*pi*radius**2
@@ -711,7 +714,7 @@ module sl_model_mod
 
       ! write out the ocean area excluding the marine-based region
       cstarxy(:,:) = cxy0(:,:) * beta0(:,:)
-      call spat2spec(cstarxy,cstarlm,spheredat)
+      call sh_spat2spec(cstarxy,cstarlm,spheredat)
       open(unit = 201, file = trim(outputfolder)//'oceanBeta_area', form = 'formatted', access ='sequential', &
       & status = 'replace')
       write(201,'(ES14.4E2)') real(cstarlm(0,0))*4*pi*radius**2
@@ -789,7 +792,7 @@ module sl_model_mod
          else ! If not checking for floating ice
             icestarxy(:,:) = icexy(:,:,1)
          endif
-         call spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
+         call sh_spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
 
          ice_volume = icestarlm(0,0)*4*pi*radius**2
 
@@ -1089,7 +1092,7 @@ module sl_model_mod
       write(unit_num,'(A,EN15.4E2,A)') '                     ',times(nfiles),' years'
 
       ! Decompose initial topography (STEP 2) (used to check convergence of outer loop)
-      call spat2spec(tinit(:,:), t0lm, spheredat)
+      call sh_spat2spec(tinit(:,:), t0lm, spheredat)
 
       !=====================================================================================
       !                   1. BEGIN ICE PART
@@ -1118,7 +1121,7 @@ module sl_model_mod
          else ! If not checking for floating ice
             icestarxy(:,:) = icexy(:,:,n)
          endif
-         call spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
+         call sh_spat2spec(icestarxy(:,:),icestarlm(:,:),spheredat)
 
          if (n == 1) then
             dicestarlm(:,:) = 0.0            ! No change at first timestep
@@ -1153,11 +1156,11 @@ module sl_model_mod
       cstar0(:,:)  = cxy0(:,:) * beta0(:,:)
       cstarxy(:,:) = cxy(:,:) * beta(:,:)  ! First guess to the O.F using converged O.F the preivous timestep
 
-      call spat2spec(cstarxy,cstarlm,spheredat) ! Decompose the current cstar
+      call sh_spat2spec(cstarxy,cstarlm,spheredat) ! Decompose the current cstar
 
       ! Calculate the first guess to topography correction
       tOxy(:,:) = tinit(:,:) * (cstarxy(:,:) - cstar0(:,:)) ! (eq. 70)
-      call spat2spec(tOxy, tOlm, spheredat) ! Decompose the topo correction term
+      call sh_spat2spec(tOxy, tOlm, spheredat) ! Decompose the topo correction term
 
 
       dS(:,:,1) = deltaS(:,:,1)
@@ -1326,11 +1329,11 @@ module sl_model_mod
          dsllm(0:2,0:2) = dsllm(0:2,0:2) + dsl_rot(0:2,0:2)
 
          ! Convert dSL (total spatially heterogeneous change since time0) to spatial domain
-         call spec2spat(dslxy, dsllm, spheredat)
+         call sh_spec2spat(dslxy, dsllm, spheredat)
 
          ! Compute r0 (STEP 7)
          rOxy(:,:) = dslxy(:,:) * cstarxy(:,:) ! (eq. 68)
-         call spat2spec(rOxy, rOlm, spheredat) ! Decompose r0
+         call sh_spat2spec(rOxy, rOlm, spheredat) ! Decompose r0
 
          ! Compute conservation term (STEP 8)
          conserv = (1 / cstarlm(0,0)) * (-1.0 * (rhoi / rhow) * deltaicestar(0,0,nfiles) - rOlm(0,0) + tOlm(0,0)) ! (eq. 78)
@@ -1344,7 +1347,7 @@ module sl_model_mod
           ! Update the total sea-level change up to the current time step
          deltasllm(:,:) = dsllm(:,:) ! Spatially heterogeneous component
          deltasllm(0,0) = deltasllm(0,0) + conserv ! Add uniform conservation term to (0,0)
-         call spec2spat(deltaslxy, deltasllm, spheredat) ! Synthesize deltasl
+         call sh_spec2spat(deltaslxy, deltasllm, spheredat) ! Synthesize deltasl
 
          ! Calculate convergence criterion for inner loop
          if ( abs(sum(abs(dSlm)) - sum(abs(olddSlm))) < epsilon(0.0) .and. abs(sum(abs(olddSlm))) < epsilon(0.0)) then
@@ -1373,11 +1376,11 @@ module sl_model_mod
 
             !new guess to ocean*beta function
             cstarxy(:,:) = cxy(:,:) * beta(:,:) ! (eq. 65)
-            call spat2spec(cstarxy, cstarlm, spheredat) ! Decompose cstar
+            call sh_spat2spec(cstarxy, cstarlm, spheredat) ! Decompose cstar
 
             ! new guess to the topo correction
             tOxy(:,:) = tinit * (cstarxy(:,:) - cstar0(:,:)) ! (eq. 70)
-            call spat2spec(tOxy, tOlm, spheredat) ! Decompose tO
+            call sh_spat2spec(tOxy, tOlm, spheredat) ! Decompose tO
          endif
 
          if (xi <= epsilon1) then ! If converged
@@ -1419,7 +1422,7 @@ module sl_model_mod
             enddo
          endif
          rrlm(0:2,0:2) = rrlm(0:2,0:2) + rr_rot(0:2,0:2)
-         call spec2spat(rrxy, rrlm, spheredat)
+         call sh_spec2spat(rrxy, rrlm, spheredat)
          rr(:,:,nfiles) = rrxy(:,:)
       endif
 
@@ -1443,14 +1446,14 @@ module sl_model_mod
 
       ! Calculate global mean sea-level change where marine-based region is flooded
       slcxy_ocn = deltaslxy(:,:) * cxy(:,:)
-      call spat2spec(slcxy_ocn, slclm_ocn, spheredat)
-      call spat2spec(cxy, clm, spheredat)
+      call sh_spat2spec(slcxy_ocn, slclm_ocn, spheredat)
+      call sh_spat2spec(cxy, clm, spheredat)
       gmslc_ocn = slclm_ocn(0,0) / clm(0,0)
       ! Calculate global mean sea-level change where marine-based region is NOT flooded
       slcxy_ocnBeta = deltaslxy(:,:) * cxy(:,:) * beta(:,:)
       cstarxy = cxy(:,:) * beta(:,:)
-      call spat2spec(slcxy_ocnBeta, slclm_ocnBeta, spheredat)
-      call spat2spec(cstarxy, cstarlm, spheredat)
+      call sh_spat2spec(slcxy_ocnBeta, slclm_ocnBeta, spheredat)
+      call sh_spat2spec(cstarxy, cstarlm, spheredat)
       gmslc_ocnBeta = slclm_ocnBeta(0,0) / cstarlm(0,0)
 
       !=========================================================================================

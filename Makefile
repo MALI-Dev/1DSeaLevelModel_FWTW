@@ -29,6 +29,10 @@ CPPFLAGS =
 CPPINCLUDES = 
 INCLUDES = -I$(NETCDF)/include -I.
 
+USE_DUCC ?= 0
+DUCC_INCLUDE ?=
+DUCC_LIBS ?=
+
 # Specify NetCDF libraries, checking if netcdff is required (it will be present in v4 of netCDF)
 LIBS = -L$(NETCDF)/lib
 NCLIB = -lnetcdf
@@ -37,6 +41,16 @@ ifneq ($(wildcard $(NETCDF)/lib/libnetcdff.*), ) # CHECK FOR NETCDF4
         LIBS += $(NCLIBF)
 endif # CHECK FOR NETCDF4
 LIBS += $(NCLIB)
+
+ifeq ($(USE_DUCC),1)
+ifneq ($(DUCC_INCLUDE),)
+INCLUDES += -I$(DUCC_INCLUDE)
+endif
+LIBS += $(DUCC_LIBS) -lstdc++
+DUCC_OBJ = ducc_backend_mod.o
+else
+DUCC_OBJ = ducc_backend_stub_mod.o
+endif
 
 RM = rm -f
 
@@ -47,6 +61,8 @@ RM = rm -f
 
 OBJS = sl_model_driver.o \
        sl_model_mod.o \
+        sh_backend_mod.o \
+        $(DUCC_OBJ) \
        spharmt.o \
        user_specs_mod.o\
        sl_init_mod.o
@@ -57,7 +73,8 @@ slmodel.exe: $(OBJS)
 	$(FC) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
 
 sl_model_driver.o: sl_model_mod.o
-sl_model_mod.o: spharmt.o user_specs_mod.o sl_init_mod.o
+sl_model_mod.o: sh_backend_mod.o user_specs_mod.o sl_init_mod.o
+sh_backend_mod.o: spharmt.o $(DUCC_OBJ)
 
 clean:
 	$(RM) *.o *.mod slmodel.exe
