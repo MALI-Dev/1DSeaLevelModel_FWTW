@@ -88,7 +88,7 @@ sh_backend_test.exe: test_sh_backends.o sh_transform_adapter.o spharmt.o sh_shtn
 	$(FC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 fftw-build:
-	cd $(FFTW_ROOT) && sh bootstrap.sh && ./configure --prefix=$(FFTW_PREFIX) --enable-shared --disable-static && make && make install
+	cd $(FFTW_ROOT) && sh bootstrap.sh && ./configure --prefix=$(FFTW_PREFIX) --enable-shared --disable-static && make MAKEINFO=true && make MAKEINFO=true install
 
 shtns-build:
 	cd $(SHTNS_ROOT) && ./configure --prefix=$(SHTNS_PREFIX) CPPFLAGS="-I$(FFTW_PREFIX)/include" LDFLAGS="-L$(FFTW_PREFIX)/lib" LIBS="-lfftw3" && make && make install

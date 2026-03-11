@@ -52,6 +52,7 @@ You can still override these variables if SHTns is installed elsewhere.
 Notes:
 
 - The selected FFTW repository is a source-generator tree. Building from that repo requires running `bootstrap.sh` and therefore additional build tools (e.g., autoconf/automake/libtool and OCaml tooling) before `configure` and `make`.
+- The `fftw-build` helper runs `make MAKEINFO=true` so a missing Texinfo `makeinfo` executable does not block the FFTW build.
 - The helper target `make shtns-build-local` builds and installs FFTW first, then configures and builds SHTns against that local FFTW install.
 - The SHTns backend expects the Fortran include file `shtns.f` to be reachable through `SHTNS_INCLUDES`.
 - The default SHTns link list is `-lshtns -lfftw3` and can be overridden with `SHTNS_LIBS="..."`.
