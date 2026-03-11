@@ -1,0 +1,10 @@
+# Build outputs
+build/
+
+# Fortran/C++ objects and module files
+*.o
+*.mod
+
+# Local executables
+slmodel.exe
+sh_backend_test.exe
