@@ -64,6 +64,7 @@
     sh_backend = 'spharmt'
     ducc_direct_map = .true.
     ducc_sht_threads = 1
+    shtns_sht_threads = 1
 
 
 /

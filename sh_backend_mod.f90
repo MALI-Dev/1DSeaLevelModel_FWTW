@@ -3,6 +3,7 @@ module sh_backend_mod
    use iso_c_binding, only: c_ptr, c_null_ptr
    use spharmt, only: sphere, spharmt_init, spharmt_destroy, spat2spec, spec2spat
    use ducc_backend_mod, only: ducc_is_available, ducc_init, ducc_destroy, ducc_spat2spec, ducc_spec2spat, ducc_configure
+   use shtns_backend_mod, only: shtns_state, shtns_is_available, shtns_init, shtns_destroy, shtns_spat2spec, shtns_spec2spat, shtns_configure
 
    implicit none
    private
@@ -14,6 +15,7 @@ module sh_backend_mod
    type :: sh_state
       type(sphere) :: spheredat
       type(c_ptr) :: ducc_plan = c_null_ptr
+      type(shtns_state) :: shtns_plan
       character(16) :: backend = 'spharmt'
       logical :: initialized = .false.
    end type sh_state
@@ -45,13 +47,15 @@ contains
          sh_backend_available = .true.
       elseif (key == 'ducc') then
          sh_backend_available = ducc_is_available()
+      elseif (key == 'shtns') then
+         sh_backend_available = shtns_is_available()
       else
          sh_backend_available = .false.
       endif
    end function sh_backend_available
 
 
-   subroutine sh_initialize(state, backend_name, nlon, nlat, ntrunc, re, unit_num, ducc_direct_map, ducc_sht_threads)
+   subroutine sh_initialize(state, backend_name, nlon, nlat, ntrunc, re, unit_num, ducc_direct_map, ducc_sht_threads, shtns_sht_threads)
       type(sh_state), intent(inout) :: state
       character(*), intent(in) :: backend_name
       integer, intent(in) :: nlon, nlat, ntrunc
@@ -59,6 +63,7 @@ contains
       integer, intent(in) :: unit_num
       logical, intent(in), optional :: ducc_direct_map
       integer, intent(in), optional :: ducc_sht_threads
+      integer, intent(in), optional :: shtns_sht_threads
       character(16) :: key
       integer :: direct_map_flag, thread_count
 
@@ -88,12 +93,23 @@ contains
          call ducc_configure(state%ducc_plan, direct_map_flag, thread_count)
 
          state%backend = 'ducc'
+      elseif (key == 'shtns') then
+         if (.not. shtns_is_available()) then
+            write(unit_num,*) 'SHTns backend was requested but this executable was built without SHTns support.'
+            write(unit_num,*) 'Rebuild with USE_SHTNS=1 and local FFTW/SHTns dependencies.'
+            stop
+         endif
+         call shtns_init(state%shtns_plan, nlon, nlat, ntrunc)
+         if (present(shtns_sht_threads)) then
+            call shtns_configure(state%shtns_plan, shtns_sht_threads)
+         endif
+         state%backend = 'shtns'
       elseif (key == 'spharmt') then
          call spharmt_init(state%spheredat, nlon, nlat, ntrunc, re)
          state%backend = 'spharmt'
       else
          write(unit_num,*) 'Unknown spherical harmonic backend: ', trim(backend_name)
-         write(unit_num,*) 'Supported values are: spharmt, ducc'
+         write(unit_num,*) 'Supported values are: spharmt, ducc, shtns'
          stop
       endif
 
@@ -110,6 +126,8 @@ contains
 
       if (trim(state%backend) == 'ducc') then
          call ducc_destroy(state%ducc_plan)
+      elseif (trim(state%backend) == 'shtns') then
+         call shtns_destroy(state%shtns_plan)
       else
          call spharmt_destroy(state%spheredat)
       endif
@@ -127,6 +145,8 @@ contains
 
       if (trim(state%backend) == 'ducc') then
          call ducc_spat2spec(z, u, state%ducc_plan)
+      elseif (trim(state%backend) == 'shtns') then
+         call shtns_spat2spec(z, u, state%shtns_plan)
       else
          call spat2spec(z, u, state%spheredat)
       endif
@@ -140,6 +160,8 @@ contains
 
       if (trim(state%backend) == 'ducc') then
          call ducc_spec2spat(z, u, state%ducc_plan)
+      elseif (trim(state%backend) == 'shtns') then
+         call shtns_spec2spat(z, u, state%shtns_plan)
       else
          call spec2spat(z, u, state%spheredat)
       endif

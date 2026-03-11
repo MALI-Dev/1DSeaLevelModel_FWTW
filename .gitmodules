@@ -1,3 +1,9 @@
 [submodule "external/ducc"]
 	path = external/ducc
 	url = https://gitlab.mpcdf.mpg.de/mtr/ducc.git
+[submodule "external/shtns"]
+	path = external/shtns
+	url = https://bitbucket.org/nschaeff/shtns.git
+[submodule "external/fftw"]
+	path = external/fftw
+	url = https://github.com/knbarton/fftw-3.3.8

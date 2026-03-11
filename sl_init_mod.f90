@@ -351,7 +351,7 @@ module sl_io_mod
                         patch_ice, L_sim, dt1, dt2, &
                         dt3, dt4, Ldt1, Ldt2, &
                         Ldt3, Ldt4, whichplanet, sh_backend, &
-                        ducc_direct_map, ducc_sht_threads)
+                        ducc_direct_map, ducc_sht_threads, shtns_sht_threads)
 
       character(str_len), intent(out) :: inputfolder_ice
       character(str_len), intent(out) :: inputfolder
@@ -367,6 +367,7 @@ module sl_io_mod
       character(16), intent(out) :: sh_backend
       logical, intent(out) :: ducc_direct_map
       integer, intent(out) :: ducc_sht_threads
+      integer, intent(out) :: shtns_sht_threads
 
       character(str_len), intent(out) :: planetmodel
       character(str_len), intent(out) :: icemodel
@@ -417,11 +418,12 @@ module sl_io_mod
                                    dt4, Ldt1, Ldt2, Ldt3, &
                                    Ldt4
 
-      namelist /others/ whichplanet, sh_backend, ducc_direct_map, ducc_sht_threads
+      namelist /others/ whichplanet, sh_backend, ducc_direct_map, ducc_sht_threads, shtns_sht_threads
 
       ! Backward-compatible defaults when older namelists omit DUCC tuning keys.
       ducc_direct_map = .true.
       ducc_sht_threads = 1
+      shtns_sht_threads = 1
 
       open(201, file='namelist.sealevel', status='old', form='formatted')
       read(201, io_directory)

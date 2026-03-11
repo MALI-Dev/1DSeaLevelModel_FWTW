@@ -24,6 +24,7 @@ The model now supports runtime selection of spherical harmonic backend through t
 
 - `spharmt`: default pure Fortran backend.
 - `ducc`: optional DUCC backend (must be compiled in).
+- `shtns`: optional SHTns backend (must be compiled in).
 
 If `sh_backend='ducc'` is requested in a binary built without DUCC support, the model terminates with a clear error.
 
@@ -31,6 +32,54 @@ For main model runs, DUCC runtime tuning can also be set in `namelist.sealevel` 
 
 - `ducc_direct_map = .true.` enables the direct Fortran-strided map path (`.false.` uses fallback copy path).
 - `ducc_sht_threads = 1` sets DUCC transform threads (must be positive to take effect).
+- `shtns_sht_threads = 1` sets SHTns transform threads (must be positive to take effect).
+
+### Fetch SHTns and FFTW source submodules
+
+```bash
+make shtns-submodule
+make fftw-submodule
+```
+
+This initializes/updates local sources at `external/shtns` and `external/fftw`.
+
+### Build with SHTns enabled (local-only FFTW+SHTns)
+
+```bash
+make clean
+make USE_SHTNS=1
+```
+
+By default, SHTns expects a local binary FFTW install at `external/fftw/install`
+(`FFTW_MODE=binary`, default) and verifies that `fftw3.h` and `libfftw3` are present.
+If you prefer to build FFTW from source inside this repo, switch to `FFTW_MODE=source`.
+In source mode, the default branch-aligned behavior is `FFTW_SOURCE=tarball`
+(download official FFTW release tarball automatically).
+
+Source-build mode (`FFTW_MODE=source`) builds dependencies in this order:
+- FFTW install at `build/fftw/stage/install`
+- SHTns install at `build/shtns/stage/install`
+
+You can build dependency stages explicitly:
+
+```bash
+make fftw-lib
+make shtns-lib
+```
+
+Build FFTW from source explicitly:
+
+```bash
+make FFTW_MODE=source fftw-lib
+make USE_SHTNS=1 FFTW_MODE=source
+```
+
+Use submodule source-generator tree instead of tarball (optional):
+
+```bash
+make FFTW_MODE=source FFTW_SOURCE=submodule fftw-lib
+make USE_SHTNS=1 FFTW_MODE=source FFTW_SOURCE=submodule
+```
 
 ### Fetch DUCC source submodule
 
@@ -68,12 +117,21 @@ make ducc-shim
 
 ## Standalone Backend Comparison Test
 
-You can compare transform differences and CPU timing between `spharmt` and `ducc`
-without running the full sea-level solver:
+You can compare transform differences and CPU timing between `spharmt` and one
+available optional backend (`ducc` preferred, otherwise `shtns`) without running
+the full sea-level solver:
 
 ```bash
 make clean
 make USE_DUCC=1 sh-backend-test
+./sh_backend_test.exe
+```
+
+or
+
+```bash
+make clean
+make USE_SHTNS=1 sh-backend-test
 ./sh_backend_test.exe
 ```
 
