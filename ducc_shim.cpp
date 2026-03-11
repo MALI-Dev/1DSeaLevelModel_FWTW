@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <new>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "ducc0/sht/sht.h"
@@ -18,8 +19,10 @@ struct DuccPlan {
     int nlon;
     int nlat;
     int ntrunc;
+    int nthreads;
     std::vector<std::size_t> mstart;
     std::vector<double> ringfactor;
+    std::vector<double> mapbuf;
 };
 
 DuccPlan *as_plan(void *ptr)
@@ -57,8 +60,17 @@ void *ducc_sh_init(int nlon, int nlat, int ntrunc, double re)
         plan->nlon = nlon;
         plan->nlat = nlat;
         plan->ntrunc = ntrunc;
+        plan->nthreads = 1;
         plan->mstart.resize(static_cast<std::size_t>(ntrunc + 1));
         plan->ringfactor.assign(static_cast<std::size_t>(nlat), 1.0);
+        plan->mapbuf.resize(static_cast<std::size_t>(nlat) * static_cast<std::size_t>(nlon));
+
+        if (const char *tenv = std::getenv("DUCC_SHT_THREADS")) {
+            int t = std::atoi(tenv);
+            if (t > 0) {
+                plan->nthreads = t;
+            }
+        }
 
         std::size_t idx = 0;
         for (int m = 0; m <= ntrunc; ++m) {
@@ -94,7 +106,7 @@ void ducc_sh_spat2spec(void *plan_ptr, const double *z, void *u, int nlat, int n
     }
 
     try {
-        std::vector<double> mapbuf(static_cast<std::size_t>(nlat) * static_cast<std::size_t>(nlon));
+        auto &mapbuf = plan->mapbuf;
         for (int j = 0; j < nlon; ++j) {
             for (int i = 0; i < nlat; ++i) {
                 mapbuf[static_cast<std::size_t>(i) * static_cast<std::size_t>(nlon) + static_cast<std::size_t>(j)] =
@@ -125,7 +137,7 @@ void ducc_sh_spat2spec(void *plan_ptr, const double *z, void *u, int nlat, int n
             std::string("GL"),
             0.0,
             ringfactor,
-            1);
+            static_cast<std::size_t>(plan->nthreads));
     } catch (const std::exception &ex) {
         std::fprintf(stderr, "ducc_sh_spat2spec exception: %s\n", ex.what());
         std::abort();
@@ -148,7 +160,7 @@ void ducc_sh_spec2spat(void *plan_ptr, double *z, const void *u, int nlat, int n
     }
 
     try {
-        std::vector<double> mapbuf(static_cast<std::size_t>(nlat) * static_cast<std::size_t>(nlon));
+        auto &mapbuf = plan->mapbuf;
 
         ducc0::cmav<dcomplex, 2> alm(
             reinterpret_cast<const dcomplex *>(u),
@@ -173,7 +185,7 @@ void ducc_sh_spec2spat(void *plan_ptr, double *z, const void *u, int nlat, int n
             std::string("GL"),
             0.0,
             ringfactor,
-            1,
+            static_cast<std::size_t>(plan->nthreads),
             ducc0::STANDARD);
 
         for (int j = 0; j < nlon; ++j) {
