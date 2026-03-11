@@ -32,15 +32,6 @@ std::array<std::size_t, 3> map_shape(const DuccPlan &p)
     return {1u, static_cast<std::size_t>(p.nlat), static_cast<std::size_t>(p.nlon)};
 }
 
-std::array<ptrdiff_t, 3> map_strides_for_fortran(const DuccPlan &p)
-{
-    // Fortran contiguous layout for map(nlat,nlon): latitude index is fastest.
-    return {
-    0,
-        1,
-        static_cast<ptrdiff_t>(p.nlat)};
-}
-
 std::size_t alm_extent(const DuccPlan &p)
 {
     const std::size_t n = static_cast<std::size_t>(p.ntrunc + 1);
@@ -101,10 +92,17 @@ void ducc_sh_spat2spec(void *plan_ptr, const double *z, void *u, int nlat, int n
     }
 
     try {
+        std::vector<double> mapbuf(static_cast<std::size_t>(nlat) * static_cast<std::size_t>(nlon));
+        for (int j = 0; j < nlon; ++j) {
+            for (int i = 0; i < nlat; ++i) {
+                mapbuf[static_cast<std::size_t>(i) * static_cast<std::size_t>(nlon) + static_cast<std::size_t>(j)] =
+                    z[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(nlat)];
+            }
+        }
+
         ducc0::cmav<double, 3> map(
-            z,
-            map_shape(*plan),
-            map_strides_for_fortran(*plan));
+            mapbuf.data(),
+            map_shape(*plan));
         ducc0::vmav<dcomplex, 2> alm(
             reinterpret_cast<dcomplex *>(u),
             std::array<std::size_t, 2>{1u, alm_extent(*plan)});
@@ -148,13 +146,14 @@ void ducc_sh_spec2spat(void *plan_ptr, double *z, const void *u, int nlat, int n
     }
 
     try {
+        std::vector<double> mapbuf(static_cast<std::size_t>(nlat) * static_cast<std::size_t>(nlon));
+
         ducc0::cmav<dcomplex, 2> alm(
             reinterpret_cast<const dcomplex *>(u),
             std::array<std::size_t, 2>{1u, alm_extent(*plan)});
         ducc0::vmav<double, 3> map(
-            z,
-            map_shape(*plan),
-            map_strides_for_fortran(*plan));
+            mapbuf.data(),
+            map_shape(*plan));
         ducc0::cmav<std::size_t, 1> mstart(
             plan->mstart.data(),
             std::array<std::size_t, 1>{plan->mstart.size()});
@@ -174,6 +173,13 @@ void ducc_sh_spec2spat(void *plan_ptr, double *z, const void *u, int nlat, int n
             ringfactor,
             1,
             ducc0::STANDARD);
+
+        for (int j = 0; j < nlon; ++j) {
+            for (int i = 0; i < nlat; ++i) {
+                z[static_cast<std::size_t>(i) + static_cast<std::size_t>(j) * static_cast<std::size_t>(nlat)] =
+                    mapbuf[static_cast<std::size_t>(i) * static_cast<std::size_t>(nlon) + static_cast<std::size_t>(j)];
+            }
+        }
     } catch (const std::exception &ex) {
         std::fprintf(stderr, "ducc_sh_spec2spat exception: %s\n", ex.what());
         std::abort();
