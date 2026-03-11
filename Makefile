@@ -35,7 +35,7 @@ INCLUDES = -I$(NETCDF)/include -I.
 USE_DUCC ?= 0
 DUCC_DIR ?= external/ducc
 DUCC_INCLUDE ?= $(DUCC_DIR)/src
-DUCC_BUILD_DIR ?= $(DUCC_DIR)/build-local
+DUCC_BUILD_DIR ?= build/ducc
 DUCC_OBJ_DIR ?= $(DUCC_BUILD_DIR)/obj
 DUCC_TARGET_LIB ?= $(DUCC_BUILD_DIR)/libducc0.a
 DUCC_SHIM_SRC ?= ducc_shim.cpp
@@ -54,6 +54,7 @@ DUCC_SRCS = \
         $(DUCC_DIR)/src/ducc0/math/geom_utils.cc \
         $(DUCC_DIR)/src/ducc0/math/wigner3j.cc \
         $(DUCC_DIR)/src/ducc0/math/space_filling.cc \
+        $(DUCC_DIR)/src/ducc0/sht/sht.cc \
         $(DUCC_DIR)/src/ducc0/wgridder/wgridder.cc \
         $(DUCC_DIR)/src/ducc0/infra/string_utils.cc \
         $(DUCC_DIR)/src/ducc0/infra/communication.cc \

@@ -51,8 +51,8 @@ make USE_DUCC=1
 
 By default, `DUCC_DIR=external/ducc` and `DUCC_INCLUDE=$(DUCC_DIR)/src`.
 When `USE_DUCC=1`, the Makefile now builds a local static DUCC library at
-`external/ducc/build-local/libducc0.a` automatically.
-It also builds a local C-ABI shim library at `external/ducc/build-local/libducc_shim.a`.
+`build/ducc/libducc0.a` automatically.
+It also builds a local C-ABI shim library at `build/ducc/libducc_shim.a`.
 
 You can also build it explicitly:
 
