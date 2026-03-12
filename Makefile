@@ -20,8 +20,21 @@
 
 # gfortran
 FC = gfortran
-FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian -ffpe-summary=none -g
-LDFLAGS = -O3 -m64
+BUILD ?= baseline
+COMMON_FFLAGS = -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian -ffpe-summary=none
+COMMON_LDFLAGS = -m64
+
+ifeq ($(BUILD),perf)
+FFLAGS = -O3 $(COMMON_FFLAGS) -g -march=native -funroll-loops
+LDFLAGS = -O3 $(COMMON_LDFLAGS)
+else ifeq ($(BUILD),debug)
+FFLAGS = -O0 $(COMMON_FFLAGS) -g -fcheck=all -fbacktrace
+LDFLAGS = -O0 $(COMMON_LDFLAGS) -g
+else
+FFLAGS = -O3 $(COMMON_FFLAGS) -g
+LDFLAGS = -O3 $(COMMON_LDFLAGS)
+endif
+
 PERF_TIMING ?= 0
 
 FFLAGS += -cpp
