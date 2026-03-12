@@ -176,6 +176,13 @@ module sl_model_mod
    subroutine sl_timewindow(iter) !create a time window that points to which ice history to read in
 
       integer :: iter
+#ifdef PERF_TIMING
+      real :: perf_t0, perf_t1
+#endif
+
+#ifdef PERF_TIMING
+      call cpu_time(perf_t0)
+#endif
 
       ! save internal timestep profiles to a big array 'int_dt'
       int_dt(1) = dt4
@@ -329,6 +336,11 @@ module sl_model_mod
       write(unit_num,'(A,I4)') 'Total number of files in the current time window (nfiles) = ', nfiles
       write(unit_num,'(A,I4)') ' Number of marching steps the TW has taken =        ', Travel
       write(unit_num,*) ''
+
+#ifdef PERF_TIMING
+      call cpu_time(perf_t1)
+      write(unit_num,'(A,F10.4,A)') 'PERF_TIMING sl_timewindow_internal=', perf_t1 - perf_t0, ' s'
+#endif
 
    end subroutine sl_timewindow
    !_______________________________________________________________________________________________________________________!
@@ -834,12 +846,22 @@ module sl_model_mod
       integer :: iter, itersl, dtime
       real, dimension(:,:), optional :: mali_iceload, mali_mask ! variables for coupled ISM-SLM simulations
       real, dimension(:,:), intent(out), optional :: slchange ! variable exchanged with the ISM
+#ifdef PERF_TIMING
+      real :: perf_t0, perf_t1
+      real :: perf_inner_start
+      real :: perf_lovebeta, perf_inner, perf_output
+#endif
 
       !===========================================================
       !                   BEGIN TIMING & EXECUTION
       !___________________________________________________________
       call cpu_time(counti_cpu)
       call system_clock(count = counti, count_rate = countrate)  ! Total computation time
+#ifdef PERF_TIMING
+      perf_lovebeta = 0.0
+      perf_inner = 0.0
+      perf_output = 0.0
+#endif
 
       if (coupling) then
 
@@ -1181,6 +1203,9 @@ module sl_model_mod
       !>>>>>>>>>>>>>>>>>>> Start of inner loop <<<<<<<<<<<<<<<<<<<
       !----------------------------------------------------------------------------------------
       ninner = 1
+#ifdef PERF_TIMING
+      call cpu_time(perf_inner_start)
+#endif
       do ! Inner loop
 
          !-----\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/    Rotation    \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/----!
@@ -1277,6 +1302,9 @@ module sl_model_mod
          !-----/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\    End Rotation    /\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\----!
 
          ! Calculate beta (eq. B14) - viscous response factor
+#ifdef PERF_TIMING
+         call cpu_time(perf_t1)
+#endif
          do l = 1,norder
             do nn = 1,nfiles-1 ! Sum over all previous timesteps
                lovebeta(nn,l) = 0.0
@@ -1299,6 +1327,10 @@ module sl_model_mod
                enddo
             enddo
          endif
+#ifdef PERF_TIMING
+         call cpu_time(perf_t0)
+         perf_lovebeta = perf_lovebeta + (perf_t0 - perf_t1)
+#endif
 
          ! Compute viscous response outside inner loop, since it doesn't depend on current timestep
          viscous(:,:) = (0.0,0.0)
@@ -1396,6 +1428,10 @@ module sl_model_mod
          ninner = ninner + 1
 
       enddo ! End inner loop
+#ifdef PERF_TIMING
+      call cpu_time(perf_t1)
+      perf_inner = perf_inner + (perf_t1 - perf_inner_start)
+#endif
       !-----------------------------------------------------------
       !<<<<<<<<<<<<<<<<<<<< End of inner loop >>>>>>>>>>>>>>>>>>>>
       !-----------------------------------------------------------
@@ -1457,6 +1493,9 @@ module sl_model_mod
       !                          OUTPUT
       !_________________________________________________________________________________________
 
+#ifdef PERF_TIMING
+      call cpu_time(perf_t0)
+#endif
       write(unit_num,'(A)') 'Writing output files...'
       j = TIMEWINDOW(nfiles)
       write(unit_num,*) 'FILENUMBER of new outputs : ',j
@@ -1559,6 +1598,11 @@ module sl_model_mod
          call write_sl(icexy(:,:,nfiles), icemodel_out, outputfolder_ice, suffix=numstr)
       endif !endif coupling
 
+#ifdef PERF_TIMING
+         call cpu_time(perf_t1)
+         perf_output = perf_output + (perf_t1 - perf_t0)
+#endif
+
       call system_clock(countf) ! Total time
       call cpu_time(countf_cpu)
 
@@ -1575,6 +1619,11 @@ module sl_model_mod
 
 
       write(unit_num,'(A,F7.2,A)') 'Done! Total time ', real(countf - counti) / real(countrate), ' seconds'
+#ifdef PERF_TIMING
+      write(unit_num,'(A,F10.4,A)') 'PERF_TIMING love_number_beta=', perf_lovebeta, ' s'
+      write(unit_num,'(A,F10.4,A)') 'PERF_TIMING inner_loop_total=', perf_inner, ' s'
+      write(unit_num,'(A,F10.4,A)') 'PERF_TIMING output_section=', perf_output, ' s'
+#endif
       write(unit_num,*) ''
       write(unit_num,*) ''
 

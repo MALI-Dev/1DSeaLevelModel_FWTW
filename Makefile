@@ -22,6 +22,13 @@
 FC = gfortran
 FFLAGS = -O3 -m64 -ffree-line-length-none -fdefault-real-8 -fconvert=big-endian -ffpe-summary=none -g
 LDFLAGS = -O3 -m64
+PERF_TIMING ?= 0
+
+FFLAGS += -cpp
+
+ifeq ($(PERF_TIMING),1)
+FFLAGS += -DPERF_TIMING
+endif
 
 
 CPP = cpp -P -traditional

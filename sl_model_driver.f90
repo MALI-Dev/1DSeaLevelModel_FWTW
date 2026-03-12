@@ -10,6 +10,9 @@ program sl_model_driver
    real :: starttime                        ! Start time of the simulation
    integer :: iargc, nargs                  ! Arguments read in from a bash script
    character(16) :: carg(20)                ! Arguments from a bash script
+#ifdef PERF_TIMING
+   real :: perf_start, perf_total
+#endif
 
 nargs = iargc()
 do i=1,nargs
@@ -35,18 +38,46 @@ endif
 call sl_solver_checkpoint(itersl, dtime)
 
 ! set up the temporal resolution
+#ifdef PERF_TIMING
+call cpu_time(perf_start)
+#endif
 call sl_timewindow(iter)
+#ifdef PERF_TIMING
+call cpu_time(perf_total)
+write(unit_num,'(A,F10.4,A)') 'PERF_TIMING sl_timewindow=', perf_total - perf_start, ' s'
+#endif
 
 ! initialize arrays
+#ifdef PERF_TIMING
+call cpu_time(perf_start)
+#endif
 call sl_allocate_and_initialize_array
+#ifdef PERF_TIMING
+call cpu_time(perf_total)
+write(unit_num,'(A,F10.4,A)') 'PERF_TIMING sl_allocate_and_initialize_array=', perf_total - perf_start, ' s'
+#endif
 
 ! intialize and execute the sea-level solver
+#ifdef PERF_TIMING
+call cpu_time(perf_start)
+#endif
 if (iter .eq. 0) then
    call sl_solver_init(itersl, starttime)
 elseif (iter .gt. 0) then
    call sl_solver(itersl, iter, dtime, starttime)
 endif
+#ifdef PERF_TIMING
+call cpu_time(perf_total)
+write(unit_num,'(A,F10.4,A)') 'PERF_TIMING solver_total=', perf_total - perf_start, ' s'
+#endif
 
 ! deallocate arrays
+#ifdef PERF_TIMING
+call cpu_time(perf_start)
+#endif
 call sl_deallocate_array
+#ifdef PERF_TIMING
+call cpu_time(perf_total)
+write(unit_num,'(A,F10.4,A)') 'PERF_TIMING sl_deallocate_array=', perf_total - perf_start, ' s'
+#endif
 end program sl_model_driver
