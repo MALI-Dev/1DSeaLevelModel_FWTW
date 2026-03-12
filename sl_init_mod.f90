@@ -69,6 +69,10 @@ module sl_io_mod
    use netCDF
    implicit none
 
+   real, dimension(:), allocatable, save :: latgrid_cache
+   real, dimension(:), allocatable, save :: longrid_cache
+   logical, save :: grid_cache_ready = .false.
+
    public :: sl_drive_readnl, sl_get_model_res, sl_readnl
 
    contains
@@ -86,6 +90,30 @@ module sl_io_mod
       endif
 
    end subroutine check
+
+
+   ! -------------------------------------------------------------------------
+   subroutine ensure_grid_cache
+
+      if (grid_cache_ready) return
+
+      allocate (latgrid_cache(nglv), longrid_cache(2*nglv))
+      latgrid_cache = 0.0
+      longrid_cache = 0.0
+
+      open(unit = 201, file = trim(gridfolder)//trim(grid_lat), form = 'formatted', &
+      & access = 'sequential', status = 'old')
+      read(201,*) latgrid_cache
+      close(201)
+
+      open(unit = 201, file = trim(gridfolder)//trim(grid_lon), form = 'formatted', &
+      & access = 'sequential', status = 'old')
+      read(201,*) longrid_cache
+      close(201)
+
+      grid_cache_ready = .true.
+
+   end subroutine ensure_grid_cache
 
 
    ! -------------------------------------------------------------------------
@@ -135,12 +163,8 @@ module sl_io_mod
       real, dimension(:,:), intent(in) :: data_slm !data in the SLM written to the netCDF file
       character (len = *), optional ::  suffix
       character (len = *), optional :: fext
-      real, dimension(:), allocatable :: latgrid
-      real, dimension(:), allocatable :: longrid
 
-      allocate (latgrid(nglv), longrid(2*nglv))
-      latgrid = 0.0
-      longrid = 0.0
+      call ensure_grid_cache
 
       ! attribute IDs for I/O in netCDF
       !character (len = *), parameter :: UNITS = "units"
@@ -148,18 +172,6 @@ module sl_io_mod
       !character (len = *), parameter :: SL_UNITS = "meters"
       !character (len = *), parameter :: LAT_UNITS = "degrees"
       !character (len = *), parameter :: LON_UNITS = "degrees_east"
-
-
-      ! Read in lat-lon grid files
-      open(unit = 201, file = trim(gridfolder)//trim(grid_lat), form = 'formatted', &
-      & access = 'sequential', status = 'old')
-      read(201,*) latgrid
-      close(201)
-
-      open(unit = 201, file = trim(gridfolder)//trim(grid_lon), form = 'formatted', &
-      & access = 'sequential', status = 'old')
-      read(201,*) longrid
-      close(201)
 
        !write out data
 
@@ -193,11 +205,9 @@ module sl_io_mod
       call check( nf90_enddef(ncid)) ! End definition
 
       call check( nf90_put_var(ncid, varid, reshape(data_slm,[2*nglv,nglv]))) !write data
-      call check( nf90_put_var(ncid, lon_varid, longrid))
-      call check( nf90_put_var(ncid, lat_varid, latgrid))
+      call check( nf90_put_var(ncid, lon_varid, longrid_cache))
+      call check( nf90_put_var(ncid, lat_varid, latgrid_cache))
       call check( nf90_close(ncid))
-
-      deallocate (latgrid, longrid)
 
    end subroutine write_nf90
 
