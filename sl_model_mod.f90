@@ -1155,15 +1155,11 @@ module sl_model_mod
 
       ! Calculate beta (STEP 3) (eq. 44)
       ! Calculate current beta based on iceload at the current timestep
-      do j = 1, 2 * nglv
-         do i = 1, nglv
-             if (icestarxy(i,j) < epsilon(0.0)) then
-                beta(i,j) = 1
-             else
-                beta(i,j) = 0
-             endif
-         enddo
-      enddo
+      where (icestarxy(:,:) < epsilon(0.0))
+         beta(:,:) = 1.0
+      elsewhere
+         beta(:,:) = 0.0
+      end where
 
       ! calculate initial (initial within the time window) cstar
       cstar0(:,:)  = cxy0(:,:) * beta0(:,:)
@@ -1397,15 +1393,11 @@ module sl_model_mod
             topoxy(:,:) = tinit(:,:) - deltaslxy(:,:) ! (eq. 39)
 
             ! new ocean function
-            do j = 1,2*nglv
-               do i = 1,nglv
-                  if (topoxy(i,j) >= 0.0) then
-                     cxy(i,j) = 0.0
-                  else
-                     cxy(i,j) = 1.0
-                  endif
-               enddo
-            enddo
+            where (topoxy(:,:) >= 0.0)
+               cxy(:,:) = 0.0
+            elsewhere
+               cxy(:,:) = 1.0
+            end where
 
             !new guess to ocean*beta function
             cstarxy(:,:) = cxy(:,:) * beta(:,:) ! (eq. 65)
@@ -1471,15 +1463,11 @@ module sl_model_mod
       topoxy(:,:) = tinit(:,:) - deltaslxy(:,:) ! (eq. 12)
 
       ! Update ocean function
-      do j = 1,2*nglv
-         do i = 1,nglv
-            if (topoxy(i,j) >= 0.0) then
-               cxy(i,j) = 0.0
-            else
-               cxy(i,j) = 1.0
-            endif
-         enddo
-      enddo
+      where (topoxy(:,:) >= 0.0)
+         cxy(:,:) = 0.0
+      elsewhere
+         cxy(:,:) = 1.0
+      end where
 
       ! Calculate global mean sea-level change where marine-based region is flooded
       slcxy_ocn = deltaslxy(:,:) * cxy(:,:)
