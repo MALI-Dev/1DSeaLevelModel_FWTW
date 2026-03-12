@@ -846,6 +846,7 @@ module sl_model_mod
       integer :: iter, itersl, dtime
       real, dimension(:,:), optional :: mali_iceload, mali_mask ! variables for coupled ISM-SLM simulations
       real, dimension(:,:), intent(out), optional :: slchange ! variable exchanged with the ISM
+      real, dimension(:), allocatable :: dt_since
 #ifdef PERF_TIMING
       real :: perf_t0, perf_t1
       real :: perf_inner_start
@@ -1193,6 +1194,12 @@ module sl_model_mod
       dS(:,:,nfiles) = (cstarlm(:,:) / cstarlm(0,0)) * ((-rhoi / rhow) * dicestar(0,0,nfiles)) ! Save into a big array
       dSlm(:,:) = dS(:,:,nfiles)
 
+      allocate(dt_since(nfiles))
+      dt_since(:) = 0.0
+      do nn = 1,nfiles-1
+         dt_since(nn) = (times(nfiles) - times(nn)) / 1000.0
+      enddo
+
 
       !========================================================================================
       !                   END OF THE OCEAN PART
@@ -1230,9 +1237,9 @@ module sl_model_mod
                betattprime = 0.0
                do k = 1,nmod(2) ! Sum over k=1,K
                   betatt = betatt + (rprime(k,2) / s(k,2)) &
-                           & * ( 1.0 - exp(-1.0 * s(k,2) * (times(nfiles) - times(nn)) / 1000.0) )
+                           & * ( 1.0 - exp(-1.0 * s(k,2) * dt_since(nn)) )
                   betattprime = betattprime + &
-                              & (rprimeT(k,2) / s(k,2)) * ( 1.0 - exp(-1.0 * s(k,2) * (times(nfiles) - times(nn)) / 1000.0) )
+                              & (rprimeT(k,2) / s(k,2)) * ( 1.0 - exp(-1.0 * s(k,2) * dt_since(nn)) )
                enddo
                sum_il(:,:) = sum_il(:,:) + dil(:,:,nn) * betatt
                sum_m(:) = sum_m(:) + dm(:,nn) * betattprime
@@ -1263,7 +1270,7 @@ module sl_model_mod
                lovebetatt(nn) = 0.0
                do k = 1,nmod(2) ! Sum over k=1,K
                   lovebetatt(nn) = lovebetatt(nn) + ((rprimeT(k,2) - rT(k,2)) / s(k,2)) &
-                                   * ( 1 - exp(-1.0 * s(k,2) * (times(nfiles) - times(nn)) / 1000.0) ) ! (eq. B27)
+                                   * ( 1 - exp(-1.0 * s(k,2) * dt_since(nn)) ) ! (eq. B27)
                enddo
             enddo
 
@@ -1282,7 +1289,7 @@ module sl_model_mod
                   do k = 1,nmod(2) ! Sum over k=1,K
                      lovebetattrr(nn) = lovebetattrr(nn) &
                                        + ((rT(k,2)) / s(k,2)) &
-                                       * (1 - exp(-1.0 * s(k,2) * (times(nfiles) - times(nn)) / 1000.0)) ! (eq. B27)
+                                       * (1 - exp(-1.0 * s(k,2) * dt_since(nn))) ! (eq. B27)
                   enddo
                enddo
                do m = 0,2
@@ -1310,7 +1317,7 @@ module sl_model_mod
                lovebeta(nn,l) = 0.0
                do k = 1,nmod(l) ! Sum over k=1,K
                   lovebeta(nn,l) = lovebeta(nn,l) + ((rprime(k,l) - r(k,l)) / s(k,l)) &
-                                  * (1 - exp(-1.0 * s(k,l) * (times(nfiles) - times(nn)) / 1000.0)) ! (eq. B14)
+                                  * (1 - exp(-1.0 * s(k,l) * dt_since(nn))) ! (eq. B14)
                enddo
             enddo
          enddo
@@ -1321,7 +1328,7 @@ module sl_model_mod
                   lovebetarr(nn,l) = 0.0
                   do k = 1,nmod(l) ! Sum over k=1,K (modes)
                      lovebetarr(nn,l) = lovebetarr(nn,l) &
-                                    & + ((r(k,l)) / s(k,l)) * (1 - exp(-1.0 * s(k,l) * (times(nfiles) - times(nn)) / 1000.0))
+                                    & + ((r(k,l)) / s(k,l)) * (1 - exp(-1.0 * s(k,l) * dt_since(nn)))
                                     ! (eq. B14)
                   enddo
                enddo
@@ -1632,6 +1639,7 @@ module sl_model_mod
          write(unit_num,*) ' GREAT JOB TW!'
       endif
       write(unit_num,*) ''
+      if (allocated(dt_since)) deallocate(dt_since)
    end subroutine sl_solver
 
 
