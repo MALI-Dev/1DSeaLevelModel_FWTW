@@ -7,10 +7,15 @@ module shtns_backend_mod
 
    real(c_double), parameter :: sh_norm = 1.41421356d0
    integer(c_int), parameter :: SHT_GAUSS = 0
+   integer(c_int), parameter :: SHT_AUTO = 1
+   integer(c_int), parameter :: SHT_REG_FAST = 2
+   integer(c_int), parameter :: SHT_QUICK_INIT = 4
+   integer(c_int), parameter :: SHT_GAUSS_FLY = 6
    integer(c_int), parameter :: SHT_ORTHONORMAL = 0
    integer(c_int), parameter :: SHT_REAL_NORM = 2048
    integer(c_int), parameter :: SHT_THETA_CONTIGUOUS = 256
    integer(c_int), parameter :: SHT_SCALAR_ONLY = 4096
+   integer(c_int), parameter :: SHT_ALLOW_PADDING = 65536
 
    type :: shtns_state
       type(c_ptr) :: cfg = c_null_ptr
@@ -81,29 +86,93 @@ module shtns_backend_mod
 
 contains
 
+   function lower_string(input_str) result(output_str)
+      character(*), intent(in) :: input_str
+      character(len(input_str)) :: output_str
+      integer :: i, code
+
+      output_str = input_str
+      do i = 1, len(input_str)
+         code = iachar(output_str(i:i))
+         if (code >= iachar('A') .and. code <= iachar('Z')) then
+            output_str(i:i) = achar(code + 32)
+         endif
+      enddo
+   end function lower_string
+
+
+   integer(c_int) function decode_shtns_grid_type(grid_type)
+      character(*), intent(in) :: grid_type
+      character(32) :: key
+
+      key = trim(adjustl(lower_string(grid_type)))
+      if (key == 'gauss') then
+         decode_shtns_grid_type = SHT_GAUSS
+      elseif (key == 'auto') then
+         decode_shtns_grid_type = SHT_AUTO
+      elseif (key == 'gauss_fly') then
+         decode_shtns_grid_type = SHT_GAUSS_FLY
+      elseif (key == 'quick_init') then
+         decode_shtns_grid_type = SHT_QUICK_INIT
+      elseif (key == 'reg_fast') then
+         decode_shtns_grid_type = SHT_REG_FAST
+      else
+         decode_shtns_grid_type = SHT_GAUSS
+      endif
+   end function decode_shtns_grid_type
+
    logical function shtns_is_available()
       shtns_is_available = .true.
    end function shtns_is_available
 
 
-   subroutine shtns_init(state, nlon, nlat, ntrunc)
+   subroutine shtns_init(state, nlon, nlat, ntrunc, nthreads, eps, allow_padding, grid_type)
       type(shtns_state), intent(inout) :: state
       integer, intent(in) :: nlon, nlat, ntrunc
-      integer(c_int) :: norm, layout, l_c, m_c
+      integer, intent(in), optional :: nthreads
+      real, intent(in), optional :: eps
+      logical, intent(in), optional :: allow_padding
+      character(*), intent(in), optional :: grid_type
+      integer(c_int) :: norm, layout, l_c, m_c, configured_threads, grid_flag
       integer :: l, m, lm
       real(c_double) :: eps_polar
+      logical :: use_padding
 
       call shtns_destroy(state)
 
       norm = SHT_ORTHONORMAL + SHT_REAL_NORM
+
+      if (present(nthreads)) then
+         if (nthreads > 0) then
+            configured_threads = shtns_use_threads_c(int(nthreads, c_int))
+         endif
+      endif
+
       state%cfg = shtns_create_c(int(ntrunc, c_int), int(ntrunc, c_int), int(1, c_int), norm)
       if (.not. c_associated(state%cfg)) then
          write(*,*) 'SHTns initialization failed in shtns_create.'
          stop
       endif
 
-      layout = SHT_GAUSS + SHT_THETA_CONTIGUOUS + SHT_SCALAR_ONLY
+      grid_flag = SHT_GAUSS
+      if (present(grid_type)) then
+         grid_flag = decode_shtns_grid_type(grid_type)
+      endif
+
+      use_padding = .false.
+      if (present(allow_padding)) then
+         use_padding = allow_padding
+      endif
+
+      layout = grid_flag + SHT_THETA_CONTIGUOUS + SHT_SCALAR_ONLY
+      if (use_padding) then
+         layout = layout + SHT_ALLOW_PADDING
+      endif
+
       eps_polar = 1.0d-10
+      if (present(eps)) then
+         eps_polar = real(eps, c_double)
+      endif
       call shtns_set_grid_c(state%cfg, layout, eps_polar, int(nlat, c_int), int(nlon, c_int))
 
       state%nlm = (ntrunc + 1)*(ntrunc + 2)/2

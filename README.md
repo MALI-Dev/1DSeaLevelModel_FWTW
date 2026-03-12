@@ -33,6 +33,9 @@ For main model runs, DUCC runtime tuning can also be set in `namelist.sealevel` 
 - `ducc_direct_map = .true.` enables the direct Fortran-strided map path (`.false.` uses fallback copy path).
 - `ducc_sht_threads = 1` sets DUCC transform threads (must be positive to take effect).
 - `shtns_sht_threads = 1` sets SHTns transform threads (must be positive to take effect).
+- `shtns_grid_type = 'gauss'` selects SHTns transform mode (`gauss`, `auto`, `gauss_fly`, `quick_init`, `reg_fast`).
+- `shtns_eps = 1.0e-10` sets SHTns polar optimization threshold (`0` disables optimization; larger values are faster but less strict).
+- `shtns_allow_padding = .false.` allows SHTns padded theta-contiguous layout for potential cache-speed gains.
 
 ### Fetch SHTns and FFTW source submodules
 

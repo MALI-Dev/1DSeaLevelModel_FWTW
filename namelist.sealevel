@@ -65,6 +65,9 @@
     ducc_direct_map = .true.
     ducc_sht_threads = 1
     shtns_sht_threads = 1
+    shtns_grid_type = 'gauss'
+    shtns_eps = 1.0e-10
+    shtns_allow_padding = .false.
 
 
 /

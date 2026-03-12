@@ -18,12 +18,28 @@ contains
    end function shtns_is_available
 
 
-   subroutine shtns_init(state, nlon, nlat, ntrunc)
+   subroutine shtns_init(state, nlon, nlat, ntrunc, nthreads, eps, allow_padding, grid_type)
       type(shtns_state), intent(inout) :: state
       integer, intent(in) :: nlon, nlat, ntrunc
+      integer, intent(in), optional :: nthreads
+      real, intent(in), optional :: eps
+      logical, intent(in), optional :: allow_padding
+      character(*), intent(in), optional :: grid_type
       state%initialized = .false.
       write(*,*) 'SHTns backend not available. Rebuild with USE_SHTNS=1.'
       write(*,*) 'Requested grid nlon=', nlon, ' nlat=', nlat, ' ntrunc=', ntrunc
+      if (present(nthreads)) then
+         write(*,*) 'Requested shtns threads=', nthreads
+      endif
+      if (present(eps)) then
+         write(*,*) 'Requested shtns eps=', eps
+      endif
+      if (present(allow_padding)) then
+         write(*,*) 'Requested shtns allow_padding=', allow_padding
+      endif
+      if (present(grid_type)) then
+         write(*,*) 'Requested shtns grid_type=', trim(grid_type)
+      endif
       stop
    end subroutine shtns_init
 

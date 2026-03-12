@@ -96,6 +96,9 @@ module user_specs_mod
    logical :: ducc_direct_map = .true. ! Used when sh_backend='ducc'; .true. uses direct Fortran-strided map path
    integer :: ducc_sht_threads = 1     ! Used when sh_backend='ducc'; >0 sets DUCC transform thread count
    integer :: shtns_sht_threads = 1    ! Used when sh_backend='shtns'; >0 sets SHTns transform thread count
+   character(16) :: shtns_grid_type = 'gauss' ! Used when sh_backend='shtns'; gauss|auto|gauss_fly|quick_init|reg_fast
+   real :: shtns_eps = 1.0E-10               ! Used when sh_backend='shtns'; polar optimization threshold
+   logical :: shtns_allow_padding = .false.  ! Used when sh_backend='shtns'; allow padded theta-contiguous layout
    
    ! Various selection ================================================================================================!
    character(5)  :: whichplanet   = 'earth'                    ! e.g. 'earth', 'Mars', etc.

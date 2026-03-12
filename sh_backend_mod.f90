@@ -55,7 +55,8 @@ contains
    end function sh_backend_available
 
 
-   subroutine sh_initialize(state, backend_name, nlon, nlat, ntrunc, re, unit_num, ducc_direct_map, ducc_sht_threads, shtns_sht_threads)
+   subroutine sh_initialize(state, backend_name, nlon, nlat, ntrunc, re, unit_num, ducc_direct_map, ducc_sht_threads, &
+                            shtns_sht_threads, shtns_eps, shtns_allow_padding, shtns_grid_type)
       type(sh_state), intent(inout) :: state
       character(*), intent(in) :: backend_name
       integer, intent(in) :: nlon, nlat, ntrunc
@@ -64,6 +65,9 @@ contains
       logical, intent(in), optional :: ducc_direct_map
       integer, intent(in), optional :: ducc_sht_threads
       integer, intent(in), optional :: shtns_sht_threads
+      real, intent(in), optional :: shtns_eps
+      logical, intent(in), optional :: shtns_allow_padding
+      character(*), intent(in), optional :: shtns_grid_type
       character(16) :: key
       integer :: direct_map_flag, thread_count
 
@@ -99,10 +103,7 @@ contains
             write(unit_num,*) 'Rebuild with USE_SHTNS=1 and local FFTW/SHTns dependencies.'
             stop
          endif
-         call shtns_init(state%shtns_plan, nlon, nlat, ntrunc)
-         if (present(shtns_sht_threads)) then
-            call shtns_configure(state%shtns_plan, shtns_sht_threads)
-         endif
+         call shtns_init(state%shtns_plan, nlon, nlat, ntrunc, shtns_sht_threads, shtns_eps, shtns_allow_padding, shtns_grid_type)
          state%backend = 'shtns'
       elseif (key == 'spharmt') then
          call spharmt_init(state%spheredat, nlon, nlat, ntrunc, re)

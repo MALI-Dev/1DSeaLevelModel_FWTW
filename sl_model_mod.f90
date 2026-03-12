@@ -165,7 +165,8 @@ module sl_model_mod
                         checkmarine, tpw, calcRG, input_times, &
                         initial_topo, iceVolume, coupling, patch_ice, &
                         L_sim, dt1, dt2, dt3, dt4, Ldt1, Ldt2, Ldt3, Ldt4, whichplanet, sh_backend, &
-                        ducc_direct_map, ducc_sht_threads, shtns_sht_threads)
+                        ducc_direct_map, ducc_sht_threads, shtns_sht_threads, &
+                        shtns_grid_type, shtns_eps, shtns_allow_padding)
 
       call sl_get_model_res(norder, nglv)
 
@@ -558,18 +559,24 @@ module sl_model_mod
          write(unit_num,*) 'SHTns thread count must be >= 1; resetting to 1.'
          shtns_sht_threads = 1
       endif
+      if (shtns_eps < 0.0) then
+         write(unit_num,*) 'SHTns eps must be >= 0; resetting to 1.0e-10.'
+         shtns_eps = 1.0e-10
+      endif
 
       ! initalize spherical harmonics
       call sh_initialize(spheredat, sh_backend, 2*nglv, nglv, norder, radius, unit_num, &
-                         ducc_direct_map, ducc_sht_threads, shtns_sht_threads)
+                         ducc_direct_map, ducc_sht_threads, shtns_sht_threads, &
+                         shtns_eps, shtns_allow_padding, shtns_grid_type)
 
       backend_key = trim(adjustl(sh_backend))
       if (backend_key == 'ducc' .or. backend_key == 'DUCC' .or. backend_key == 'Ducc') then
          write(unit_num,'(A,A,A,L1,A,I0)') 'SH backend config: backend=', trim(sh_backend), &
               ' ducc_direct_map=', ducc_direct_map, ' ducc_sht_threads=', ducc_sht_threads
       elseif (backend_key == 'shtns' .or. backend_key == 'SHTNS' .or. backend_key == 'Shtns') then
-         write(unit_num,'(A,A,A,I0)') 'SH backend config: backend=', trim(sh_backend), &
-              ' shtns_sht_threads=', shtns_sht_threads
+         write(unit_num,'(A,A,A,I0,A,ES10.3E2,A,L1,A,A)') 'SH backend config: backend=', trim(sh_backend), &
+              ' shtns_sht_threads=', shtns_sht_threads, ' shtns_eps=', shtns_eps, &
+              ' shtns_allow_padding=', shtns_allow_padding, ' shtns_grid_type=', trim(shtns_grid_type)
       else
          write(unit_num,'(A,A)') 'SH backend config: backend=', trim(sh_backend)
       endif
