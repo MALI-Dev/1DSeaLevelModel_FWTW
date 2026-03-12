@@ -847,6 +847,7 @@ module sl_model_mod
       real, dimension(:,:), optional :: mali_iceload, mali_mask ! variables for coupled ISM-SLM simulations
       real, dimension(:,:), intent(out), optional :: slchange ! variable exchanged with the ISM
       real, dimension(:), allocatable :: dt_since
+      real :: sum_abs_dslm, sum_abs_olddslm, diff_abs
 #ifdef PERF_TIMING
       real :: perf_t0, perf_t1
       real :: perf_inner_start
@@ -1386,12 +1387,16 @@ module sl_model_mod
          call spec2spat(deltaslxy, deltasllm, spheredat) ! Synthesize deltasl
 
          ! Calculate convergence criterion for inner loop
-         if ( abs(sum(abs(dSlm)) - sum(abs(olddSlm))) < epsilon(0.0) .and. abs(sum(abs(olddSlm))) < epsilon(0.0)) then
+          sum_abs_dslm = sum(abs(dSlm))
+          sum_abs_olddslm = sum(abs(olddSlm))
+          diff_abs = abs(sum_abs_dslm - sum_abs_olddslm)
+
+          if (diff_abs < epsilon(0.0) .and. abs(sum_abs_olddslm) < epsilon(0.0)) then
              xi = 0 ! Otherwise xi = 0 / 0 = NaN at the first loop of the first timestep.
-         elseif (abs(sum(abs(olddSlm))) < epsilon(0.0)) then
-             xi = abs( (sum(abs(dSlm)) - sum(abs(olddSlm))) / (epsilon(0.0) * 10) ) ! Avoid dividing by 0
+          elseif (abs(sum_abs_olddslm) < epsilon(0.0)) then
+             xi = abs(diff_abs / (epsilon(0.0) * 10)) ! Avoid dividing by 0
          else
-             xi = abs( (sum(abs(dSlm)) - sum(abs(olddSlm))) / sum(abs(olddSlm)) ) ! (eq. 83)
+             xi = abs(diff_abs / sum_abs_olddslm) ! (eq. 83)
          endif
 
          ! If the ocean loading guess has not been converged,
@@ -1425,8 +1430,8 @@ module sl_model_mod
             write(unit_num,*)
             write(unit_num,'(A,I5,A)') 'WARNING: The inner loop failed to converge after the limit of ', ninner, ' iterations.'
             write(unit_num,'(A,ES15.3,A)') '         The variable xi finished with a value of ', xi, ', resulting from '
-            write(unit_num,'(A,ES15.3)') '         sum(abs(olddSlm)) = ', sum(abs(olddSlm))
-            write(unit_num,'(A,ES15.3)') '            sum(abs(dSlm)) = ', sum(abs(dSlm))
+            write(unit_num,'(A,ES15.3)') '         sum(abs(olddSlm)) = ', sum_abs_olddslm
+            write(unit_num,'(A,ES15.3)') '            sum(abs(dSlm)) = ', sum_abs_dslm
             write(unit_num,*)
             write(unit_num,'(A)') '!!!---- Program sl_model will now be terminated. ----!!!'
             call abort ! Terminate program
