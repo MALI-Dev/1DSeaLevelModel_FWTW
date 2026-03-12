@@ -254,32 +254,26 @@ module sl_model_mod
       mask(1) = 1          ! the first element of the mask will always be one
 
       ! fill in the mask array for the time window
-      i = 1
       k = 1
-      do while (i.LE.size(int_dt))
+      do i = 1,size(int_dt)
          do j = 1, Ndt(i)
             m =  k + Rdt(i)
             mask(m) = 1
             k = m
          enddo
-         i=i+1
       enddo
 
       ! Multiply the mask created above to an array of iceloads
       !    & to find out which ice files to read in
-      i=1
-      do while (i.LE.ncalls+1)
+      do i = 1,ncalls+1
           if (i.LE.iter+1) then
-             j=1
-             do while (j.LT.i+1)
+             do j = 1,i
                 difference =ncalls+1-(i-j)
                 icefiles(j) = iceload(j)*mask(difference)
-                j=j+1
              end do
           elseif (i.GT.iter+1) then
              icefiles(i) = 0
           endif
-          i=i+1
       end do
 
       ! Output the ice file numbers that are called in a simulation over the FIRST TIMEWINDOW
@@ -293,10 +287,8 @@ module sl_model_mod
           if (j.GT.1 .AND. ice.GT.0) then
              TIMEWINDOW(k) = icefiles(j)
              k = k+1
-             m = k
-             do while (m.LT.TW_nmelt+1)
+             do m = k,TW_nmelt
                 TIMEWINDOW(m) = 0
-                m = m + 1
              end do
           endif
       end do
