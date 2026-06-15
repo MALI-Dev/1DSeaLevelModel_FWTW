@@ -827,13 +827,14 @@ module sl_model_mod
    end subroutine sl_solver_init
 
    !========================================================================================================================
-   subroutine sl_solver(itersl, iter, dtime, starttime, mali_iceload, mali_mask, slchange)
+   subroutine sl_solver(itersl, iter, dtime, starttime, mali_iceload, mali_mask, slchange, geoidchange)
       ! Compute sea-level change associated with past ice loading changes
 
       real :: starttime
       integer :: iter, itersl, dtime
       real, dimension(:,:), optional :: mali_iceload, mali_mask ! variables for coupled ISM-SLM simulations
       real, dimension(:,:), intent(out), optional :: slchange ! variable exchanged with the ISM
+      real, dimension(:,:), intent(out), optional :: geoidchange ! variable exchanged with the ISM
 
       !===========================================================
       !                   BEGIN TIMING & EXECUTION
@@ -1555,6 +1556,12 @@ module sl_model_mod
          ! this is the information passed to the ice sheet model
          !call write_sl(topoxy_m1(:,:)-topoxy(:,:), 'bedrock', folder_coupled)
           slchange = topoxy_m1(:,:)-topoxy(:,:)
+          ! write out geoid change only if it is available
+          if (calcRG) then
+             geoidchange = gg(:,:,nfiles)
+          else
+             geoidchange = 1.0e36  ! insert bad value if geoid change was not calculated
+          endif
          !write out the current ice load as a new file
          call write_sl(icexy(:,:,nfiles), icemodel_out, outputfolder_ice, suffix=numstr)
       endif !endif coupling
