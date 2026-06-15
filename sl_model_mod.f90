@@ -1556,7 +1556,12 @@ module sl_model_mod
          ! this is the information passed to the ice sheet model
          !call write_sl(topoxy_m1(:,:)-topoxy(:,:), 'bedrock', folder_coupled)
           slchange = topoxy_m1(:,:)-topoxy(:,:)
-          geoidchange = deltaslxy(:,:)+rr(:,:,nfiles)
+          ! write out geoid change only if it is available
+          if (calcRG) then
+             geoidchange = gg(:,:,nfiles)
+          else
+             geoidchange = 1.0e36  ! insert bad value if geoid change was not calculated
+          endif
          !write out the current ice load as a new file
          call write_sl(icexy(:,:,nfiles), icemodel_out, outputfolder_ice, suffix=numstr)
       endif !endif coupling
